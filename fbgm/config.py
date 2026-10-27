@@ -34,7 +34,7 @@ POLICY = {
     "flex_slots": {"conservative": 2, "aggressive": 3},
     "flex_margin": 3.0,
     # Dropping a core (non-flex) player needs a clear long-term upgrade.
-    "core_upgrade_min": 2.0,
+    "core_upgrade_min": 4.0,
     # A stream may cost at most this much rest-of-season FP/G vs the player dropped...
     "stream_ros_tolerance": 1.5,
     # ...and only if it gains at least this many projected FP this matchup week.

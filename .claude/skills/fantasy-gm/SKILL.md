@@ -46,7 +46,7 @@ Global flags (before the command): `--fresh` (skip 5-min cache), `--mode aggress
   max 2 in conservative mode. Usually 1 spot; a 2nd opens automatically when two players are equally weak.
   Everyone else is core.
 - Move frequency is not a concern - churn flex spots as often as it pays.
-- `UPGRADE` = better rest-of-season rate: any amount over a flex player, >= 2 FP/G over a core player.
+- `UPGRADE` = better rest-of-season rate: any amount over a flex player, >= 4 FP/G over a core player.
   If the weekly number is negative, suggest timing the move.
 - `STREAM` = flex spot only, costs <= 1.5 FP/G long-term, gains >= 15 FP this week.
 - Neck-and-neck adds for the same drop (within 1.5 FP/G ROS and 10 FP this week): prefer the easier SOS, and say so.
