@@ -1,7 +1,10 @@
 {
   "permissions": {
     "allow": [
-      "Bash(python3 -m fbgm:*)"
+      "Bash(python3 -m fbgm:*)",
+      "Bash(cd /home/user/fantasy-basketball-gm && python3 -m fbgm:*)",
+      "Bash(cd /home/user/Fantasy-Basketball-GM && python3 -m fbgm:*)",
+      "Bash(git clone --depth 1 https://github.com/romancosta/fantasy-basketball-gm /home/user/fantasy-basketball-gm)"
     ]
   }
 }
