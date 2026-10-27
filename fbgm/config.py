@@ -28,9 +28,13 @@ SCORING_CONFIRMED = {
 STAT_GP = "42"
 
 POLICY = {
-    # conservative: one rotating "flex" roster spot; aggressive: up to three.
+    # Flex pool = lowest-rated rostered player, plus anyone within flex_margin FP/G of him
+    # (near-equal low value), capped per mode.
     "mode": "conservative",
-    "flex_slots": {"conservative": 1, "aggressive": 3},
+    "flex_slots": {"conservative": 2, "aggressive": 3},
+    "flex_margin": 3.0,
+    # Dropping a core (non-flex) player needs a clear long-term upgrade.
+    "core_upgrade_min": 2.0,
     # A stream may cost at most this much rest-of-season FP/G vs the player dropped...
     "stream_ros_tolerance": 1.5,
     # ...and only if it gains at least this many projected FP this matchup week.

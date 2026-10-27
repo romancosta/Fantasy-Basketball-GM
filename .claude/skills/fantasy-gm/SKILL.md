@@ -37,13 +37,16 @@ Global flags (before the command): `--fresh` (skip 5-min cache), `--mode aggress
 
 ## GM policy (owner's instructions)
 - **Conservative by default.** The team is good; protect high-average players.
-- Rotate at most **1 flex spot** (the lowest-rated rostered player). Everyone else is core and is not dropped for a stream.
-- Move frequency is not a concern - churn the flex spot as often as it pays.
-- `UPGRADE` = better rest-of-season rate. Recommend freely (if the weekly number is negative, suggest timing the move).
+- **Flex pool** = the lowest-rated rostered player, plus any other player within 3 FP/G of him (near-equal low value),
+  max 2 in conservative mode. Usually 1 spot; a 2nd opens automatically when two players are equally weak.
+  Everyone else is core.
+- Move frequency is not a concern - churn flex spots as often as it pays.
+- `UPGRADE` = better rest-of-season rate: any amount over a flex player, >= 2 FP/G over a core player.
+  If the weekly number is negative, suggest timing the move.
 - `STREAM` = flex spot only, costs <= 1.5 FP/G long-term, gains >= 15 FP this week.
 - Never recommend players who are OUT or haven't played this season.
 - If `drops` shows **3+ UNDERPERFORMING** players (8+ games, season < 80% and last-15 < 85% of prior), tell the owner and
-  propose `--mode aggressive` (3 flex spots). Don't switch without their OK.
+  propose `--mode aggressive` (up to 3 flex spots). Don't switch without their OK.
 - Always open/use an empty IR slot for an OUT player before dropping anyone.
 
 ## Giving advice

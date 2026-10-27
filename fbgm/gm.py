@@ -128,7 +128,8 @@ def cmd_drops(lg, a):
         print(f"{p.name[:24]:24} {pos(p):9} {p.rate:5.1f} {f1(p.season_fpg):>5} {f1(p.last15_fpg):>5} "
               f"{p.prior:5.1f} {p.gp:3} {lg.games_left(p):3}  {' '.join(notes)}")
     mode = a.mode or POLICY["mode"]
-    print(f"\nMode: {mode} ({POLICY['flex_slots'][mode]} flex spot). FLEX = players we'd rotate.")
+    print(f"\nMode: {mode}. FLEX = players we'd rotate: the lowest rate plus anyone within "
+          f"{POLICY['flex_margin']:.0f} FP/G of it (max {POLICY['flex_slots'][mode]}).")
     if mode == "conservative" and under >= POLICY["aggressive_trigger"]:
         print(f"!! {under} underperformers -> consider --mode aggressive")
 
@@ -146,11 +147,14 @@ def cmd_swap(lg, a):
 
 
 def verdict(lg, add, drop, wk, ros, mode=None):
-    if ros >= 0 and wk >= 0:
-        return "UPGRADE - better long-term and not worse this week"
-    if ros >= 0:
-        return f"UPGRADE (long-term) - costs {-wk:.0f} FP this week; time the move after this week's games"
     in_flex = drop in lg.flex_pool(mode)
+    bar = 0 if in_flex else POLICY["core_upgrade_min"]
+    if ros >= bar and wk >= 0:
+        return "UPGRADE - better long-term and not worse this week"
+    if ros >= bar:
+        return f"UPGRADE (long-term) - costs {-wk:.0f} FP this week; time the move after this week's games"
+    if not in_flex and ros >= 0:
+        return f"NO - {drop.name} is core; +{ros:.1f} FP/G is below the {bar:.0f} FP/G bar to replace him"
     if (in_flex and ros >= -POLICY["stream_ros_tolerance"] and wk >= POLICY["stream_min_week_gain"]):
         return "STREAM - flex spot, small long-term cost, meaningful weekly gain"
     if not in_flex:
@@ -162,6 +166,8 @@ def cmd_advise(lg, a):
     """Best moves: evaluate top free agents against the flex pool and any IR opening."""
     header(lg)
     flex = lg.flex_pool(a.mode)
+    # Flex players can be streamed or upgraded; core players only via a clear upgrade.
+    drops = [p for p in lg.roster() if p.lineup_slot != IR]
     cands = sorted(lg.free_agents, key=lambda p: -p.rate)[:40]
     # Streamers: also consider the best schedule fits this week.
     cands += sorted(lg.free_agents, key=lambda p: -p.expected * lg.games_left(p))[:20]
@@ -171,7 +177,9 @@ def cmd_advise(lg, a):
         if add.id in seen or add.availability == 0 or add.gp == 0:
             continue
         seen.add(add.id)
-        for drop in flex:
+        for drop in drops:
+            if drop not in flex and add.rate - drop.rate < POLICY["core_upgrade_min"]:
+                continue
             wk, ros = lg.swap_value(add, drop)
             v = verdict(lg, add, drop, wk, ros, a.mode)
             if not v.startswith("NO"):
@@ -180,9 +188,28 @@ def cmd_advise(lg, a):
     print(f"\nFlex pool: {', '.join(f'{p.name} ({p.rate:.1f})' for p in flex)}")
     if not rows:
         print("No moves clear the bar. Hold.")
-    for kind, ros, wk, add, drop, v in rows[: a.n]:
-        print(f"  {kind:7} +{add.name} / -{drop.name}: week {wk:+.0f} FP, ROS {ros:+.1f} FP/G"
-              f"{' (waivers)' if add.status == 'WAIVERS' else ''}{inj(add)}")
+        cmd_lineup(lg, a, quiet_header=True)
+        return
+    # Plan: best move, then the best remaining move using a different add and drop.
+    plan, used = [], set()
+    for r in rows:
+        if r[3].id not in used and r[4].id not in used:
+            plan.append(r)
+            used |= {r[3].id, r[4].id}
+
+    def show(r):
+        kind, ros, wk, add, drop, _ = r
+        print(f"  {kind:7} +{add.name} / -{drop.name}{'' if drop in flex else ' (core)'}: "
+              f"week {wk:+.0f} FP, ROS {ros:+.1f} FP/G{' (waivers)' if add.status == 'WAIVERS' else ''}{inj(add)}")
+
+    print("Recommended moves:")
+    for r in plan:
+        show(r)
+    alts = [r for r in rows if r not in plan][: a.n]
+    if alts:
+        print("Alternatives:")
+        for r in alts:
+            show(r)
     cmd_lineup(lg, a, quiet_header=True)
 
 

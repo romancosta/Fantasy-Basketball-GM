@@ -269,11 +269,14 @@ class League:
                    if self.plays(pl, d) and not (d == self.today and self.locked(pl, d)))
 
     def flex_pool(self, mode=None):
-        """Lowest-rated rostered (non-IR) players: the spots we're willing to rotate."""
+        """Spots we're willing to rotate: the lowest-rated rostered (non-IR) player, plus any
+        others within flex_margin FP/G of him, up to the mode's cap."""
         mode = mode or POLICY["mode"]
-        n = POLICY["flex_slots"][mode]
         mine = sorted((p for p in self.roster() if p.lineup_slot != IR), key=lambda p: p.rate)
-        return mine[:n]
+        if not mine:
+            return []
+        floor = mine[0].rate + POLICY["flex_margin"]
+        return [p for p in mine if p.rate <= floor][: POLICY["flex_slots"][mode]]
 
     def swap_value(self, add, drop):
         roster = self.roster()
