@@ -418,6 +418,11 @@ def cmd_nightly(lg, a):
     print(f"\n{{{{OVERVIEW}}}} **Outlook: {outlook(p)}** ({p:.0%} win chance)")
 
     proj = {tid: lg.week_projection(lg.roster(tid), tid) for tid in (me, opp)}
+    # Today: points already scored in started games + best lineup for the games still to come.
+    sp_today = lg.date_sp.get(lg.today)
+    today = {tid: lg.points_so_far(tid).get(sp_today, 0.0) + lg.day_projection(lg.roster(tid), lg.today)[0]
+             for tid in (me, opp)}
+    tday = f"{lg.today:%a} proj"
     names = [lg.team_names[me], lg.team_names[opp]]
     if rec and rec["final"]:
         a_, b_ = rec["sides"]
@@ -433,14 +438,16 @@ def cmd_nightly(lg, a):
             print("\n" + alert)
         print(f"\n## Week {lg.matchup_period} preview · vs {names[1]}")
         cells = scored([proj[me][0], proj[opp][0]])
-        table(["Team", "Proj (margin)"], [[names[i], cells[i]] for i in range(2)])
+        table(["Team", tday, "Proj (margin)"],
+              [[names[i], f"{today[tid]:,.0f}", cells[i]] for i, tid in enumerate((me, opp))])
     else:
         print(f"\n## Matchup summary · Week {lg.matchup_period} vs {names[1]}")
         day_pts = {s["tid"]: s["day_pts"] for s in rec["sides"]} if rec else {}
         cells = scored([proj[me][0], proj[opp][0]])
         yday = f"{lg.today - dt.timedelta(days=1):%a}"
-        table(["Team", yday, "Week", "Proj (margin)"],
-              [[names[i], f"{day_pts.get(tid, 0):,.0f}", f"{proj[tid][1]:,.0f}", cells[i]] for i, tid in enumerate((me, opp))])
+        table(["Team", yday, tday, "Week", "Proj (margin)"],
+              [[names[i], f"{day_pts.get(tid, 0):,.0f}", f"{today[tid]:,.0f}", f"{proj[tid][1]:,.0f}", cells[i]]
+               for i, tid in enumerate((me, opp))])
         if rec:
             print("\n" + top_line(lg, rec))
             alert = bench_alert(lg, rec)
