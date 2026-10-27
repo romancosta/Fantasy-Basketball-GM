@@ -64,3 +64,23 @@ def game_logs(scoring_period, limit=500):
     url = (f"{HOST}/seasons/{CONFIG['season']}/segments/0/leagues/{CONFIG['league_id']}"
            f"?view=kona_player_info&scoringPeriodId={scoring_period}")
     return _get(url, {"x-fantasy-filter": json.dumps(filt)}, ttl=None)["players"]
+
+
+SITE = "https://site.api.espn.com/apis"
+
+
+def news(player_id, limit=10):
+    """Recent Rotowire/ESPN news items for one player, newest first."""
+    return _get(f"{SITE}/fantasy/v2/games/fba/news/players?limit={limit}&playerId={player_id}").get("feed", [])
+
+
+def gamelog(player_id, season):
+    """A player's NBA game log for a season (games he played). Past seasons cached indefinitely."""
+    ttl = None if season < CONFIG["season"] else CACHE_TTL
+    return _get(f"{SITE}/common/v3/sports/basketball/nba/athletes/{player_id}/gamelog?season={season}", ttl=ttl)
+
+
+def team_schedule(team_id, season):
+    """An NBA team's regular-season schedule. Past seasons cached indefinitely."""
+    ttl = None if season < CONFIG["season"] else CACHE_TTL
+    return _get(f"{SITE}/site/v2/sports/basketball/nba/teams/{team_id}/schedule?season={season}", ttl=ttl).get("events", [])

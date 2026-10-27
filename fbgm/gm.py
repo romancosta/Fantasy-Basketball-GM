@@ -1,6 +1,7 @@
 """CLI: python3 -m fbgm <command> [options]"""
 import argparse
 import datetime as dt
+import re
 import sys
 
 from . import espn
@@ -430,6 +431,45 @@ def table(header, rows, text_cols=1):
         print("| " + " | ".join(r) + " |")
 
 
+NEWSY = re.compile(r"injur|questionable|doubtful|probable|\bout\b|ruled|rest|back-to-back|return|available|status|"
+                   r"listed|restriction|start|bench|suspend|trade|sign|waive|day-to-day|game-time|sidelined|miss|"
+                   r"absence|illness|sore|strain|sprain|surgery|mri|g league", re.I)
+
+
+def news_section(lg, me, opp):
+    """Back-to-back rest risks this week (plus the night after, for a Sun-Mon pair) and fresh status news, for
+    our roster and the opponent's."""
+    days = lg.remaining_days() + [lg.week_days[-1] + dt.timedelta(days=1)]
+    cutoff = lg.now - dt.timedelta(hours=POLICY["news_hours"])
+    rest, news = [], []
+    for tid, tag in ((me, "us"), (opp, "opp")):
+        for p in sorted(lg.roster(tid), key=lambda p: -p.rate):
+            if p.lineup_slot == IR:
+                continue
+            ruling = lg.game_ruling(p)
+            ruled = ruling[0] if ruling else None
+            if ruling:
+                after = "active" if ruling[1] == "rest" else "day-to-day"
+                rest.append(f"- 🛌 **{p.name}** ({tag}) ruled out {ruled:%a} ({ruling[1]}) · counted as sitting {ruled:%a} "
+                            f"only, {after} after")
+            risky = [(d, lg.rest_chance(p, d)) for d in days if d != ruled]
+            risky = [(d, c) for d, c in risky if c >= POLICY["rest_flag"]]
+            if risky:
+                pr = lg.rest_profile(p)
+                legs = " · ".join(f"{d:%a} {c:.0%}" for d, c in risky)
+                rest.append(f"- 💤 **{p.name}** ({tag}) back-to-back: chance he sits {legs} "
+                            f"(sat {pr['sat1']} first / {pr['sat2']} second legs of {pr['b2b']} healthy B2Bs)")
+            item = next((n for n in lg.news(p) if NEWSY.search(n.get("headline", ""))), None)
+            if item and dt.datetime.fromisoformat(item["published"].replace("Z", "+00:00")) >= cutoff:
+                head = item["headline"]
+                news.append(f"- 📰 **{p.name}** ({tag}): {head if len(head) <= 160 else head[:157] + '...'}")
+    print("\n## News & rest watch")
+    for line in rest + news or ["- Nothing new."]:
+        print(line)
+    if rest:
+        print("- Rest odds are already in the projections; check news before lock on those nights.")
+
+
 def cmd_nightly(lg, a):
     """Morning report in markdown: overview + outlook, matchup grid (Mondays: last week's final and the
     new week's preview), roster moves, power rankings. {{OVERVIEW}} is for the reader to fill in."""
@@ -481,6 +521,8 @@ def cmd_nightly(lg, a):
             alert = bench_alert(lg, rec)
             if alert:
                 print("\n" + alert)
+
+    news_section(lg, me, opp)
 
     print("\n## Roster moves")
     flex, _, plan, alts = plan_moves(lg, a)
