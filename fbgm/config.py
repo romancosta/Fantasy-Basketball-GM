@@ -34,7 +34,7 @@ POLICY = {
     "flex_slots": {"conservative": 2, "aggressive": 3},
     "flex_margin": 3.0,
     # Dropping a core (non-flex) player needs a clear long-term upgrade.
-    "core_upgrade_min": 2.0,
+    "core_upgrade_min": 4.0,
     # A stream may cost at most this much rest-of-season FP/G vs the player dropped...
     "stream_ros_tolerance": 1.5,
     # ...and only if it gains at least this many projected FP this matchup week.
@@ -47,6 +47,14 @@ POLICY = {
     "under_recent_ratio": 0.85,
     # Suggest switching to aggressive when this many rostered players are underperforming.
     "aggressive_trigger": 3,
+    # Opponent strength: look-back window (days), shrinkage (player-games), min rate to sample.
+    "def_window": 30,
+    "def_prior_all": 40,
+    "def_prior_pos": 20,
+    "def_min_rate": 15.0,
+    # Moves this close are "neck and neck"; break the tie on matchup strength.
+    "tie_ros": 1.5,
+    "tie_week": 10.0,
 }
 
 # Chance a player plays, by ESPN injury status.

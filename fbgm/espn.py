@@ -13,10 +13,10 @@ CACHE_TTL = 300  # seconds
 FRESH = False  # set by --fresh
 
 
-def _get(url, headers=None):
+def _get(url, headers=None, ttl=CACHE_TTL):
     key = hashlib.sha1((url + json.dumps(headers or {}, sort_keys=True)).encode()).hexdigest()
     path = os.path.join(CACHE_DIR, key + ".json")
-    if not FRESH and os.path.exists(path) and time.time() - os.path.getmtime(path) < CACHE_TTL:
+    if (ttl is None or not FRESH) and os.path.exists(path) and (ttl is None or time.time() - os.path.getmtime(path) < ttl):
         with open(path) as f:
             return json.load(f)
     req = urllib.request.Request(url, headers={"Accept": "application/json", **(headers or {})})
@@ -52,3 +52,15 @@ def players(statuses=("ONTEAM", "FREEAGENT", "WAIVERS"), limit=500, scoring_peri
 
 def pro_schedule():
     return _get(f"{HOST}/seasons/{CONFIG['season']}?view=proTeamSchedules_wl")["settings"]["proTeams"]
+
+
+def game_logs(scoring_period, limit=500):
+    """Every rostered/available player's stat line for one past scoring period. Cached indefinitely."""
+    filt = {"players": {
+        "limit": limit,
+        "filterStatsForCurrentSeasonScoringPeriodId": {"value": [scoring_period]},
+        "sortPercOwned": {"sortPriority": 1, "sortAsc": False},
+    }}
+    url = (f"{HOST}/seasons/{CONFIG['season']}/segments/0/leagues/{CONFIG['league_id']}"
+           f"?view=kona_player_info&scoringPeriodId={scoring_period}")
+    return _get(url, {"x-fantasy-filter": json.dumps(filt)}, ttl=None)["players"]
