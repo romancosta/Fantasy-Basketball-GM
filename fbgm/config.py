@@ -80,6 +80,14 @@ POLICY = {
     # simulations. A loss is decided when we get that upside (i.e. even our best moves) and still win
     # no more than decided_loss.
     "upside_streamers": 2,
+    # Back-to-back rest: from this season and last, each player's healthy back-to-backs (he played the games
+    # either side) and which leg he sat. Chance to sit a leg = (sat + prior_games * base) / (b2bs + prior_games).
+    "rest_seasons": 2,
+    "rest_prior_games": 5,
+    "rest_base": 0.05,
+    # Report flags a coming leg at or above this chance to sit, and news from the last news_hours.
+    "rest_flag": 0.15,
+    "news_hours": 30,
     "decided_win": 0.99,
     "decided_loss": 0.01,
 }

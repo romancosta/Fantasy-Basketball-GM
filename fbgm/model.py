@@ -3,6 +3,7 @@ import contextlib
 import datetime as dt
 import math
 import random
+import re
 from collections import defaultdict
 from zoneinfo import ZoneInfo
 
@@ -76,6 +77,11 @@ class Player:
                 and recent < POLICY["under_recent_ratio"] * self.prior)
 
 
+def _et_date(iso):
+    """ESPN UTC timestamp ('2026-05-12T02:30Z' or with seconds/offset) -> ET calendar date."""
+    return dt.datetime.fromisoformat(iso.replace("Z", "+00:00")).astimezone(ET).date()
+
+
 def hungarian_max(weights):
     """Max-weight assignment of rows to columns; returns {row: col}. weights[r][c] >= 0."""
     n_r, n_c = len(weights), len(weights[0]) if weights else 0
@@ -116,14 +122,16 @@ def hungarian_max(weights):
             if p[j] and p[j] - 1 < n_r and j - 1 < n_c and weights[p[j] - 1][j - 1] > 0}
 
 
-def best_lineup(players, slots):
-    """players: list of Player (all with a game). slots: list of slot ids. Returns (points, {Player: slot})."""
+def best_lineup(players, slots, value=None):
+    """players: list of Player (all with a game). slots: list of slot ids. value: Player -> FP (default
+    expected). Returns (points, {Player: slot})."""
     if not players or not slots:
         return 0.0, {}
-    w = [[pl.expected if s in pl.slots else 0.0 for s in slots] for pl in players]
+    value = value or (lambda pl: pl.expected)
+    w = [[value(pl) if s in pl.slots else 0.0 for s in slots] for pl in players]
     assign = hungarian_max(w)
     lineup = {players[r]: slots[c] for r, c in assign.items()}
-    return sum(pl.expected for pl in lineup), lineup
+    return sum(value(pl) for pl in lineup), lineup
 
 
 class League:
@@ -148,6 +156,7 @@ class League:
         self.acq = settings["acquisitionSettings"]
         self._schedule()
         self._players()
+        self.apply_rest_rulings()
 
     # ---- schedule -------------------------------------------------------
     def _schedule(self):
@@ -237,7 +246,7 @@ class League:
                     slots.remove(pl.lineup_slot)
                 continue
             cands.append(pl)
-        return best_lineup(cands, slots)
+        return best_lineup(cands, slots, lambda pl: pl.expected * self.rest_factor(pl, day))
 
     def full_lineup(self, roster, day):
         """Complete slot assignment for `day`: maximize projection, then keep players where they are.
@@ -288,7 +297,7 @@ class League:
                 if upside:
                     out.append((max(p.rate, p.form), 1.0))
                 else:
-                    out.append((p.rate, p.availability * (1 - POLICY["dnp_rate"])))
+                    out.append((p.rate, p.availability * self.rest_factor(p, d) * (1 - POLICY["dnp_rate"])))
         return out
 
     def simulate_week(self, upside=None, team_id=None, opp_id=None, sims=None):
@@ -318,6 +327,121 @@ class League:
     def win_probability(self, team_id=None, opp_id=None):
         """Chance team_id outscores opp_id this week (simulated, normal assumptions)."""
         return self.simulate_week(team_id=team_id, opp_id=opp_id)[0]
+
+    # ---- back-to-back rest ---------------------------------------------
+    def b2b_leg(self, pl, day):
+        """1 or 2 if `day` is the first or second night of a back-to-back for pl's team, else None."""
+        one = dt.timedelta(days=1)
+        if not self.plays(pl, day):
+            return None
+        if self.plays(pl, day + one):
+            return 1
+        return 2 if self.plays(pl, day - one) else None
+
+    def rest_watch(self):
+        """Players whose back-to-back habits we track: our roster and this week's opponent's."""
+        if not hasattr(self, "_rest_watch"):
+            self._rest_watch = {p.id for tid in (CONFIG["my_team_id"], self.opponent_id()) for p in self.roster(tid)}
+        return self._rest_watch
+
+    def rest_profile(self, pl):
+        """{'b2b': healthy back-to-backs seen, 'sat1'/'sat2': legs sat, 'p1'/'p2': chance to sit each leg}.
+        Healthy = he played his team's games right before and right after the pair and at least one leg, so a
+        missed leg reads as rest, not injury. Uses this season and last (NBA game logs + team schedules)."""
+        cache = self.__dict__.setdefault("_rest", {})
+        if pl.id in cache:
+            return cache[pl.id]
+        b2b = sat1 = sat2 = 0
+        for season in range(CONFIG["season"] - POLICY["rest_seasons"] + 1, CONFIG["season"] + 1):
+            try:
+                log = espn.gamelog(pl.id, season)
+            except Exception:
+                continue
+            reg = {e for st in log.get("seasonTypes", []) if "Regular" in st.get("displayName", "")
+                   for c in st.get("categories", []) for e in (x.get("eventId") for x in c.get("events", [])) if e}
+            by_team = defaultdict(set)   # team id -> ET dates he played
+            for eid, ev in log.get("events", {}).items():
+                if eid in reg and ev.get("team"):
+                    by_team[ev["team"]["id"]].add(_et_date(ev["gameDate"]))
+            for team, played in by_team.items():
+                try:
+                    sched = espn.team_schedule(team, season)
+                except Exception:
+                    continue
+                first, last = min(played), max(played)
+                if season == CONFIG["season"] and last >= self.today - dt.timedelta(days=7):
+                    last = dt.date.max   # still on this team: his next game may not be played yet
+                days = sorted({_et_date(e["date"]) for e in sched
+                               if e.get("seasonType", {}).get("type") == 2 and first <= _et_date(e["date"]) <= last})
+                for i in range(1, len(days) - 2):
+                    a, b, after = days[i], days[i + 1], days[i + 2]
+                    if (b - a).days != 1 or b >= self.today or days[i - 1] not in played:
+                        continue
+                    if after < self.today and after not in played:
+                        continue
+                    if a not in played and b not in played:  # missed both: a short injury, not rest
+                        continue
+                    b2b += 1
+                    sat1 += a not in played
+                    sat2 += b not in played
+        k, base = POLICY["rest_prior_games"], POLICY["rest_base"]
+        cache[pl.id] = {"b2b": b2b, "sat1": sat1, "sat2": sat2,
+                        "p1": (sat1 + k * base) / (b2b + k), "p2": (sat2 + k * base) / (b2b + k)}
+        return cache[pl.id]
+
+    def news(self, pl):
+        """Recent news items for a tracked player (newest first); [] if unavailable."""
+        cache = self.__dict__.setdefault("_news", {})
+        if pl.id not in cache:
+            try:
+                cache[pl.id] = espn.news(pl.id)
+            except Exception:
+                cache[pl.id] = []
+        return cache[pl.id]
+
+    def game_ruling(self, pl):
+        """(date, 'rest' | 'injury') when pl's latest news rules him out of one specific upcoming game, else None.
+        ESPN marks him OUT for that, which would otherwise zero his whole week."""
+        if not hasattr(pl, "_ruling"):
+            pl._ruling = None
+            for item in self.news(pl)[:3]:
+                head = item.get("headline", "")
+                m = re.search(r"(?:ruled out|held out|will not play|won't play|sit out|is out|not play|night off)"
+                              r"[^.]*?\b(mon|tues|wednes|thurs|fri|satur|sun)day", head, re.I)
+                if not m:
+                    continue
+                text = f"{head} {item.get('story', '')}".lower()
+                kind = "rest" if re.search(r"back-to-back|rest|maintenance|night off|load management", text) else "injury"
+                wd = ["mon", "tues", "wednes", "thurs", "fri", "satur", "sun"].index(m.group(1).lower())
+                when = _et_date(item["published"])
+                day = next(when + dt.timedelta(days=i) for i in range(7) if (when + dt.timedelta(days=i)).weekday() == wd)
+                if day >= self.today:
+                    pl._ruling = (day, kind)
+                break
+        return pl._ruling
+
+    def apply_rest_rulings(self):
+        """A player OUT for one named game sits that day only: active on the others after a rest night,
+        day-to-day after an injury ruling."""
+        for pid in self.rest_watch():
+            pl = self.players[pid]
+            ruling = self.game_ruling(pl) if pl.injury in ("OUT", "DOUBTFUL", "QUESTIONABLE", "DAY_TO_DAY") else None
+            if ruling:
+                pl.injury = "ACTIVE" if ruling[1] == "rest" else "DAY_TO_DAY"
+
+    def rest_chance(self, pl, day):
+        """Chance pl sits `day`: 1 if news has him ruled out of that game, else his back-to-back habit for
+        that leg (0 if not a back-to-back or not tracked)."""
+        if pl.id not in self.rest_watch():
+            return 0.0
+        ruling = self.game_ruling(pl)
+        if ruling and ruling[0] == day:
+            return 1.0
+        leg = self.b2b_leg(pl, day)
+        return 0.0 if leg is None else self.rest_profile(pl)[f"p{leg}"]
+
+    def rest_factor(self, pl, day):
+        return 1.0 - self.rest_chance(pl, day)
 
     # ---- power rankings -------------------------------------------------
     def games_per_week(self):

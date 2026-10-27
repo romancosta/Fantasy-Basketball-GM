@@ -67,6 +67,17 @@ Prints the finished report in markdown; the reader only replaces `{{OVERVIEW}}` 
   opponent its upside (everyone not OUT plays at his better of rate and form, and it streams up to 2 free agents a day
   into idle players' spots) and we must still win 99% of simulations. Loss: give *us* that upside (all our best moves)
   and we must still win no more than 1%. Then the report opens with a DECIDED banner and roster moves say Skip.
+- **News & rest watch**: for our roster and the opponent's. 💤 = a back-to-back leg (this week, plus the Monday after
+  for a Sun-Mon pair) the player sits 15%+ of the time; 🛌 = news rules him out of one named game; 📰 = status news
+  from the last 30 hours (box-score recaps skipped).
+- **Back-to-back rest** (`League.rest_profile`): from this season's and last season's NBA game logs + team schedules,
+  count each player's healthy back-to-backs (played the games before and after, and at least one leg) and which leg
+  he sat. Chance to sit a leg = (sat + 5 x 5%) / (B2Bs + 5). It multiplies his expected FP on that night in every
+  projection (lineups, moves, win chance), so e.g. LeBron on the Sunday of a Sun-Mon pair is discounted for the
+  matchup's final day.
+- **One-game rulings**: ESPN marks a player OUT when he's ruled out of a single game ("ruled out for Wednesday's
+  game"), which would zero his week. Latest news like that makes him sit that day only: active after a rest night,
+  day-to-day after an injury ruling.
 - **Mondays**: separate "Week N final" (🏆/❌) and "Week N+1 preview" sections, plus a set-your-lineups reminder.
 - **Bench alert** (red): shown only when our bench scored while some of the 10 starting slots sat empty; the FP is
   what the best hindsight lineup would have added.
@@ -79,4 +90,5 @@ Prints the finished report in markdown; the reader only replaces `{{OVERVIEW}}` 
 - Check `rivals` before recommending a contested FA; note if a rival just dropped/added him.
 - Remind about lineup changes for players whose games haven't locked yet.
 - This tool is read-only; the owner makes all moves on ESPN.
-- Data access works only in the cloud environment (proxy injects ESPN auth). Locally, set `ESPN_S2` and `SWID` cookies.
+- Data access works only in the cloud environment (proxy injects ESPN auth; news and NBA game logs come from
+  site.api.espn.com, which must be an allowed host). Locally, set `ESPN_S2` and `SWID` cookies.
