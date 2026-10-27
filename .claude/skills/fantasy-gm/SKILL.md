@@ -16,6 +16,8 @@ python3 -m fbgm fa [--pos C] [--n 20]
 python3 -m fbgm drops              # roster ranked by value; FLEX + UNDERPERFORMING flags
 python3 -m fbgm swap "<add>" "<drop>"
 python3 -m fbgm rivals [--days 7]  # other teams' adds/drops
+python3 -m fbgm recap [--date D]   # last night: points per player for both matchup teams
+python3 -m fbgm nightly            # morning report: recap + score + projections + moves
 python3 -m fbgm check              # scoring + date-mapping self-test
 ```
 Global flags (before the command): `--fresh` (skip 5-min cache), `--mode aggressive`, `--today YYYY-MM-DD`.
