@@ -72,6 +72,9 @@ POLICY = {
     "power_trust_days": 21,
     "power_recent_share": 0.4,
     "power_record_fp": 25.0,
+    # The week counts as decided (lead with it, skip this week's moves) at or beyond these win chances.
+    "decided_win": 0.97,
+    "decided_loss": 0.03,
 }
 
 # Outlook labels by minimum win chance, best first.

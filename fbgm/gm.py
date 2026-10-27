@@ -415,9 +415,17 @@ def cmd_nightly(lg, a):
     print(f"# {lg.now:%a %b %-d, %Y · %-I:%M %p} ET")
     if lg.scoring_mismatch:
         print(f"\n!! League scoring differs from the confirmed table: {lg.scoring_mismatch}")
+    proj = {tid: lg.week_projection(lg.roster(tid), tid) for tid in (me, opp)}
+    margin = proj[me][0] - proj[opp][0]
+    decided = "W" if p >= POLICY["decided_win"] else "L" if p <= POLICY["decided_loss"] else None
+    if decided:
+        days = len(lg.remaining_days())
+        head = "🔒 **WEEK {} DECIDED: WIN**" if decided == "W" else "💀 **WEEK {} DECIDED: LOSS**"
+        print(f"\n> {head.format(lg.matchup_period)} · projected {margin:+,.0f} with {days} day{'s' * (days != 1)} "
+              f"left ({p:.0%} win chance). No roster moves needed this week"
+              f"{'' if decided == 'W' else ' - nothing realistic flips it'}.")
     print(f"\n{{{{OVERVIEW}}}} **Outlook: {outlook(p)}** ({p:.0%} win chance)")
 
-    proj = {tid: lg.week_projection(lg.roster(tid), tid) for tid in (me, opp)}
     # Today: points already scored in started games + best lineup for the games still to come.
     sp_today = lg.date_sp.get(lg.today)
     today = {tid: lg.points_so_far(tid).get(sp_today, 0.0) + lg.day_projection(lg.roster(tid), lg.today)[0]
@@ -459,7 +467,10 @@ def cmd_nightly(lg, a):
     if lg.today.weekday() == 0:
         print("- 📋 New week: set your lineups for the week.")
     print("- Flex: " + (", ".join(f"{q.name} (form {q.form:.1f})" for q in flex) or "none"))
-    if not plan:
+    if decided:
+        print(f"- **Skip** · week {lg.matchup_period} is decided; this week's moves can't change the result.")
+        plan, alts = [], []
+    elif not plan:
         print(f"- **Hold** · no move adds {POLICY['flex_min_week_gain']:.0f}+ FP this week.")
     for r in plan:
         wk, starts, add, drop = r
