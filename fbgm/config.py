@@ -59,7 +59,24 @@ POLICY = {
     "def_min_rate": 15.0,
     # Moves within this many week FP of the best are "neck and neck"; break the tie on matchup strength.
     "tie_week": 3.0,
+    # A healthy core player is only dropped for a proven upgrade: the add has this many games, a
+    # rest-of-season rate at least this much higher, and current form at least as good.
+    "core_upgrade_min_gp": 8,
+    "core_upgrade_rate_gain": 3.0,
+    # Win chance: per player-game FP spread as a share of his expected FP, plus projection error as a
+    # share of each team's remaining projected FP.
+    "game_sd_ratio": 0.4,
+    "model_sd_ratio": 0.06,
+    # Power rankings (FP/week units): results get weight days / (days + trust_days) against roster
+    # strength; recent_share of the results part is the last 7 days; each game over .500 adds record_fp.
+    "power_trust_days": 21,
+    "power_recent_share": 0.4,
+    "power_record_fp": 25.0,
 }
+
+# Outlook labels by minimum win chance, best first.
+OUTLOOK = [(0.97, "🔒 Guaranteed W"), (0.80, "🟢 Strong"), (0.60, "🟢 Lean W"), (0.40, "🟡 Toss-up"),
+           (0.20, "🟠 Lean L"), (0.03, "🔴 Weak"), (0.0, "💀 Loss incoming")]
 
 # Chance a player plays, by ESPN injury status.
 AVAILABILITY = {

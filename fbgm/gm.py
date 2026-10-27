@@ -4,8 +4,8 @@ import datetime as dt
 import sys
 
 from . import espn
-from .config import BENCH, CONFIG, IR, POLICY, SLOT_NAMES
-from .model import ET, League, fantasy_points
+from .config import BENCH, CONFIG, IR, OUTLOOK, POLICY, SLOT_NAMES
+from .model import ET, League, fantasy_points, hungarian_max
 
 
 def f1(x):
@@ -17,7 +17,11 @@ def pos(pl):
 
 
 def short(pl):
-    parts = [w for w in pl.name.split() if w.rstrip(".") not in ("Jr", "Sr", "II", "III", "IV")]
+    return short_name(pl.name)
+
+
+def short_name(name):
+    parts = [w for w in name.split() if w.rstrip(".") not in ("Jr", "Sr", "II", "III", "IV")]
     return parts[-1]
 
 
@@ -171,37 +175,54 @@ def core_drop_ok(lg, p):
     return not (p.ir_eligible and ir_open)
 
 
+def proven_upgrade(add, drop):
+    """A healthy core player only goes for an add with a real track record who is better on both
+    rest-of-season rate and current form."""
+    return (add.gp >= POLICY["core_upgrade_min_gp"] and add.form >= drop.form
+            and add.rate >= drop.rate + POLICY["core_upgrade_rate_gain"])
+
+
+def drop_kind(lg, add, drop, flex):
+    """'flex', 'outlook' (core, badly hurt), 'upgrade' (core, proven upgrade) or None if not droppable."""
+    if drop in flex:
+        return "flex"
+    if core_drop_ok(lg, drop):
+        return "outlook"
+    return "upgrade" if proven_upgrade(add, drop) else None
+
+
 def verdict(lg, add, drop, wk, starts, mode=None):
-    flex = drop in lg.flex_pool(mode)
-    if not flex and not core_drop_ok(lg, drop):
-        return f"NO - {drop.name} is core and his outlook hasn't changed; only flex spots get churned"
+    kind = drop_kind(lg, add, drop, lg.flex_pool(mode))
+    if kind is None:
+        return (f"NO - {drop.name} is core and {add.name} isn't a proven upgrade "
+                f"({POLICY['core_upgrade_min_gp']}+ GP, rate +{POLICY['core_upgrade_rate_gain']:.0f}, form at least as good)")
     if not starts:
         return f"NO - {add.name} can't crack the starting lineup (positions/schedule)"
     if wk < POLICY["flex_min_week_gain"]:
         return f"NO - only {wk:+.0f} FP this week (bar {POLICY['flex_min_week_gain']:.0f})"
-    return f"MOVE - {'flex spot' if flex else 'core outlook changed'}, {wk:+.0f} FP this week on current form"
+    why = {"flex": "flex spot", "outlook": "core outlook changed", "upgrade": "proven upgrade over core"}[kind]
+    return f"MOVE - {why}, {wk:+.0f} FP this week on current form"
 
 
-def cmd_advise(lg, a, quiet_header=False):
-    """Best flex moves for this matchup week, on current form, respecting lineup slots."""
-    if not quiet_header:
-        header(lg)
+def plan_moves(lg, a):
+    """Best moves for this matchup week, on current form, respecting lineup slots.
+    Returns (flex, hurt core, [(week FP, starts, add, drop)], alternatives for the first move)."""
     flex = lg.flex_pool(a.mode)
     roster = list(lg.roster())
-    core = [p for p in roster if p not in flex and p.lineup_slot != IR and core_drop_ok(lg, p)]
-    drops = list(flex) + core
+    hurt = [p for p in roster if p not in flex and p.lineup_slot != IR and core_drop_ok(lg, p)]
+    drops = [p for p in roster if p.lineup_slot != IR]
     cands = sorted(lg.free_agents, key=lambda p: -p.form)[:40]
     # Streamers: also consider the best schedule fits this week.
     cands += sorted(lg.free_agents, key=lambda p: -p.form * p.availability * lg.games_left(p))[:20]
     cands = [p for p in {c.id: c for c in cands}.values()
              if p.availability >= POLICY["add_min_availability"] and p.gp > 0]
-    print("\nFlex: " + (", ".join(f"{p.name} (form {p.form:.1f})" for p in flex) or "none")
-          + (f"  | core with changed outlook: {', '.join(f'{p.name}{inj(p)}' for p in core)}" if core else ""))
 
     def rank(roster, drops, cands):
         rows = []
         for add in cands:
             for drop in drops:
+                if drop_kind(lg, add, drop, flex) is None:
+                    continue
                 wk, starts = lg.evaluate_swap(add, drop, roster)
                 if starts and wk >= POLICY["flex_min_week_gain"]:
                     rows.append((wk, starts, add, drop))
@@ -216,27 +237,41 @@ def cmd_advise(lg, a, quiet_header=False):
 
     # Best single move first; then re-plan on the roster with that move applied.
     plan, alts, cur, left = [], [], roster, list(drops)
-    for i in range(len(flex)):
+    while True:
         rows = rank(cur, left, cands)
         if not rows:
             break
         best = rows[0]
         plan.append(best)
-        if i == 0:
+        if len(plan) == 1:
             alts = [r for r in rows[1:] if r[3] is best[3]][: a.n]
         cur = [p for p in cur if p is not best[3]] + [best[2]]
         left = [p for p in left if p is not best[3]]
         cands = [p for p in cands if p is not best[2]]
+    return flex, hurt, plan, alts
+
+
+def move_tag(lg, r, flex):
+    return {"flex": "", "outlook": " (core, outlook changed)",
+            "upgrade": f" (core, proven upgrade: rate +{r[2].rate - r[3].rate:.1f} FP/G)"}[drop_kind(lg, r[2], r[3], flex)]
+
+
+def cmd_advise(lg, a, quiet_header=False):
+    """Best moves for this matchup week, on current form, respecting lineup slots."""
+    if not quiet_header:
+        header(lg)
+    flex, hurt, plan, alts = plan_moves(lg, a)
+    print("\nFlex: " + (", ".join(f"{p.name} (form {p.form:.1f})" for p in flex) or "none")
+          + (f"  | core with changed outlook: {', '.join(f'{p.name}{inj(p)}' for p in hurt)}" if hurt else ""))
 
     def show(r):
         wk, starts, add, drop = r
-        tag = "" if drop in flex else " (core, outlook changed)"
-        print(f"  MOVE +{add.name} / -{drop.name}{tag}: week {wk:+.0f} FP, form {add.form:.1f} vs {drop.form:.1f}, "
+        print(f"  MOVE +{add.name} / -{drop.name}{move_tag(lg, r, flex)}: week {wk:+.0f} FP, form {add.form:.1f} vs {drop.form:.1f}, "
               f"{starts_str(starts)}, SOS {sos_str(lg, add).strip()}"
               f"{' (waivers)' if add.status == 'WAIVERS' else ''}{inj(add)}")
 
     if not plan:
-        print("No flex move clears the bar. Hold.")
+        print("No move clears the bar. Hold.")
     else:
         print("Recommended moves:")
         for r in plan:
@@ -271,60 +306,179 @@ def cmd_rivals(lg, a):
         print(f"  {when:%a %m/%d %I:%M%p} {team:26} {kind:4} {name}{extra}")
 
 
-def cmd_recap(lg, a):
-    """Previous night's fantasy points for my matchup, per player."""
-    day = dt.date.fromisoformat(a.date) if getattr(a, "date", None) else lg.today - dt.timedelta(days=1)
+def recap_data(lg, day):
+    """One day's fantasy points for my matchup that day: {day, sp, period, final, sides: [me, opp]}, each side
+    {tid, day_pts, total, players: [(slot, name, pts, stats, eligible slots)]}. None if no matchup that day."""
     sp = lg.date_sp.get(day)
     if sp is None:
-        print(f"\nNo scoring period on {day}.")
-        return
+        return None
     period = lg.week_of(day)
     box = espn.league("mBoxscore", "mMatchupScore", scoring_period=sp)
     me = CONFIG["my_team_id"]
     row = next((m for m in box["schedule"] if m["matchupPeriodId"] == period
                 and me in (m["home"]["teamId"], m.get("away", {}).get("teamId"))), None)
     if not row:
-        print(f"\nNo matchup found for {day}.")
-        return
-    sides = sorted(("home", "away"), key=lambda s: row[s]["teamId"] != me)
-    print(f"\nRecap {day:%a %m/%d} (week {period}):")
-    for side in sides:
+        return None
+    sides = []
+    for side in sorted(("home", "away"), key=lambda s: row[s]["teamId"] != me):
         t = row[side]
-        day_pts = (t.get("pointsByScoringPeriod") or {}).get(str(sp), 0.0)
-        print(f"  {lg.team_names[t['teamId']]}: {day_pts:.0f} FP")
-        entries = (t.get("rosterForCurrentScoringPeriod") or {}).get("entries", [])
         played = []
-        for e in entries:
+        for e in (t.get("rosterForCurrentScoringPeriod") or {}).get("entries", []):
             pe = e["playerPoolEntry"]
             st = next((s for s in pe["player"].get("stats", []) if s.get("scoringPeriodId") == sp
                        and s.get("statSourceId") == 0 and s.get("stats")), None)
             if st:
-                played.append((e["lineupSlotId"], pe["player"]["fullName"], pe.get("appliedStatTotal", 0.0), st["stats"]))
-        for slot, name, pts, s in sorted(played, key=lambda x: (x[0] == BENCH, -x[2])):
+                played.append((e["lineupSlotId"], pe["player"]["fullName"], pe.get("appliedStatTotal", 0.0),
+                               st["stats"], set(pe["player"].get("eligibleSlots", []))))
+        played.sort(key=lambda x: (x[0] == BENCH, -x[2]))
+        sides.append({"tid": t["teamId"], "day_pts": (t.get("pointsByScoringPeriod") or {}).get(str(sp), 0.0),
+                      "total": t.get("totalPoints", 0.0), "players": played})
+    return {"day": day, "sp": sp, "period": period, "final": period != lg.matchup_period, "sides": sides}
+
+
+def bench_missed(lg, side):
+    """(FP the best possible lineup would have added, bench scorers, empty starting slots) for one recap side."""
+    starters = [p for p in side["players"] if p[0] not in (BENCH, IR)]
+    bench = [p for p in side["players"] if p[0] == BENCH and p[2] > 0]
+    empty = len(lg.slots) - len(starters)
+    if not bench or empty <= 0:
+        return 0.0, bench, empty
+    pool = starters + bench
+    assign = hungarian_max([[max(p[2], 0.0) if s in p[4] else 0.0 for s in lg.slots] for p in pool])
+    best = sum(pool[r][2] for r in assign)
+    return max(best - sum(p[2] for p in starters), 0.0), bench, empty
+
+
+def cmd_recap(lg, a):
+    """Previous night's fantasy points for my matchup, per player."""
+    day = dt.date.fromisoformat(a.date) if getattr(a, "date", None) else lg.today - dt.timedelta(days=1)
+    rec = recap_data(lg, day)
+    if rec is None:
+        print(f"\nNo matchup scoring on {day}.")
+        return
+    print(f"\nRecap {day:%a %m/%d} (week {rec['period']}):")
+    for side in rec["sides"]:
+        print(f"  {lg.team_names[side['tid']]}: {side['day_pts']:.0f} FP")
+        for slot, name, pts, s, _ in side["players"]:
             line = "/".join(f"{s.get(k, 0):.0f}" for k in ("0", "6", "3", "2", "1", "11"))
             tag = " (bench, not counted)" if slot == BENCH else ""
             print(f"    {name:24} {pts:5.0f}  PTS/REB/AST/STL/BLK/TO {line}{tag}")
-    if period != lg.matchup_period:
-        a_, b_ = (row[s] for s in sides)
-        res = "WON" if a_["totalPoints"] > b_["totalPoints"] else "LOST" if a_["totalPoints"] < b_["totalPoints"] else "TIED"
-        print(f"  Week {period} final: {a_['totalPoints']:.0f}-{b_['totalPoints']:.0f} ({res})")
+    if rec["final"]:
+        a_, b_ = rec["sides"]
+        res = "WON" if a_["total"] > b_["total"] else "LOST" if a_["total"] < b_["total"] else "TIED"
+        print(f"  Week {rec['period']} final: {a_['total']:.0f}-{b_['total']:.0f} ({res})")
+
+
+# ---- morning report (markdown) -------------------------------------------
+def outlook(p):
+    return next(label for floor, label in OUTLOOK if p >= floor)
+
+
+def scored(totals):
+    """Per-team cells '1,992 (+285) 🟢' marking the leader and trailer, for two totals."""
+    a, b = totals
+    marks = ("🟢", "🔴") if a > b else ("🔴", "🟢") if a < b else ("⚪", "⚪")
+    return [f"{x:,.0f} ({x - y:+,.0f}) {m}" for x, y, m in ((a, b, marks[0]), (b, a, marks[1]))]
+
+
+def top_line(lg, rec):
+    parts = []
+    for side in rec["sides"]:
+        top = [p for p in side["players"] if p[0] not in (BENCH, IR)][:3]
+        parts.append(f"{lg.team_names[side['tid']]}: " + (", ".join(f"{short_name(p[1])} {p[2]:.0f}" for p in top) or "-"))
+    return "**Top scorers** · " + " · ".join(parts)
+
+
+def bench_alert(lg, rec):
+    missed, bench, empty = bench_missed(lg, rec["sides"][0])
+    if missed <= 0:
+        return None
+    who = ", ".join(f"{short_name(p[1])} {p[2]:.0f}" for p in bench)
+    return (f"🔴 **BENCH POINTS LEFT BEHIND: {missed:.0f} FP** ({rec['day']:%a}) · bench scored: {who} · "
+            f"{empty} of {len(lg.slots)} starting slots sat empty")
+
+
+def table(header, rows, text_cols=1):
+    """Markdown table; the first text_cols columns are left-aligned, the rest right-aligned."""
+    print("| " + " | ".join(header) + " |")
+    print("|" + "|".join(":--" if i < text_cols else "--:" for i in range(len(header))) + "|")
+    for r in rows:
+        print("| " + " | ".join(r) + " |")
 
 
 def cmd_nightly(lg, a):
-    """Morning report: last night's recap, matchup score + projections, recommended moves."""
-    a.date = None
-    header(lg)
-    cmd_recap(lg, a)
+    """Morning report in markdown: overview + outlook, matchup grid (Mondays: last week's final and the
+    new week's preview), roster moves, power rankings. {{OVERVIEW}} is for the reader to fill in."""
     me, opp = CONFIG["my_team_id"], lg.opponent_id()
-    print("\nMatchup:")
-    print(f"  {'Team':28} {'Score':>6} {'Proj rest':>9} {'Proj final':>10}")
-    totals = []
-    for tid in (me, opp):
-        total, actual, future = lg.week_projection(lg.roster(tid), tid)
-        totals.append(total)
-        print(f"  {lg.team_names[tid]:28} {actual:6.0f} {future:9.0f} {total:10.0f}")
-    print(f"  Projected margin: {totals[0] - totals[1]:+.0f}")
-    cmd_advise(lg, a, quiet_header=True)
+    rec = recap_data(lg, lg.today - dt.timedelta(days=1))
+    p = lg.win_probability(me, opp)
+    print(f"# {lg.now:%a %b %-d, %Y · %-I:%M %p} ET")
+    if lg.scoring_mismatch:
+        print(f"\n!! League scoring differs from the confirmed table: {lg.scoring_mismatch}")
+    print(f"\n{{{{OVERVIEW}}}} **Outlook: {outlook(p)}** ({p:.0%} win chance)")
+
+    proj = {tid: lg.week_projection(lg.roster(tid), tid) for tid in (me, opp)}
+    names = [lg.team_names[me], lg.team_names[opp]]
+    if rec and rec["final"]:
+        a_, b_ = rec["sides"]
+        won = a_["total"] > b_["total"]
+        print(f"\n## Week {rec['period']} final {'🏆 WON' if won else '❌ LOST' if a_['total'] < b_['total'] else '🤝 TIED'}")
+        cells = scored([a_["total"], b_["total"]])
+        results = ("🏆", "❌") if won else ("❌", "🏆") if a_["total"] < b_["total"] else ("🤝", "🤝")
+        table(["Team", f"{rec['day']:%a}", "Final (margin)"],
+              [[f"{results[i]} {lg.team_names[s['tid']]}", f"{s['day_pts']:,.0f}", cells[i]] for i, s in enumerate(rec["sides"])])
+        print("\n" + top_line(lg, rec))
+        alert = bench_alert(lg, rec)
+        if alert:
+            print("\n" + alert)
+        print(f"\n## Week {lg.matchup_period} preview · vs {names[1]}")
+        cells = scored([proj[me][0], proj[opp][0]])
+        table(["Team", "Proj (margin)"], [[names[i], cells[i]] for i in range(2)])
+    else:
+        print(f"\n## Matchup summary · Week {lg.matchup_period} vs {names[1]}")
+        day_pts = {s["tid"]: s["day_pts"] for s in rec["sides"]} if rec else {}
+        cells = scored([proj[me][0], proj[opp][0]])
+        yday = f"{lg.today - dt.timedelta(days=1):%a}"
+        table(["Team", yday, "Week", "Proj (margin)"],
+              [[names[i], f"{day_pts.get(tid, 0):,.0f}", f"{proj[tid][1]:,.0f}", cells[i]] for i, tid in enumerate((me, opp))])
+        if rec:
+            print("\n" + top_line(lg, rec))
+            alert = bench_alert(lg, rec)
+            if alert:
+                print("\n" + alert)
+
+    print("\n## Roster moves")
+    flex, _, plan, alts = plan_moves(lg, a)
+    if lg.today.weekday() == 0:
+        print("- 📋 New week: set your lineups for the week.")
+    print("- Flex: " + (", ".join(f"{q.name} (form {q.form:.1f})" for q in flex) or "none"))
+    if not plan:
+        print(f"- **Hold** · no move adds {POLICY['flex_min_week_gain']:.0f}+ FP this week.")
+    for r in plan:
+        wk, starts, add, drop = r
+        print(f"- **+{add.name} / −{drop.name}**{move_tag(lg, r, flex)}: **{wk:+.0f} FP this week** · "
+              f"form {add.form:.1f} vs {drop.form:.1f} · {len(starts)} start{'s' * (len(starts) != 1)}"
+              f"{' · waivers' if add.status == 'WAIVERS' else ''}{inj(add)}")
+    if alts:
+        print("  - Backups: " + ", ".join(f"+{r[2].name} ({r[0]:+.0f})" for r in alts))
+    if plan:
+        print("- ↻ Update your lineups after making these moves.")
+
+    print("\n## Power rankings")
+    now = lg.power_rankings()
+    prev = {tid: i for i, (tid, _) in enumerate(lg.power_rankings(lg.today - dt.timedelta(days=1)))}
+    rows = []
+    for i, (tid, t) in enumerate(now):
+        d = prev[tid] - i if prev else 0
+        move = f"▲{d}" if d > 0 else f"▼{-d}" if d < 0 else "–"
+        name = f"**{lg.team_names[tid]}**" if tid == me else lg.team_names[tid]
+        rec_ = f"{t['w']}-{t['l']}" + (f"-{t['t']}" if t["t"] else "")
+        trend = "🔥" if t["l7"] > 1.05 * t["pace"] else "🧊" if t["l7"] < 0.95 * t["pace"] else ""
+        rows.append([f"{i + 1} {move}", name, rec_, f"{t['pace']:,.0f}", f"{t['l7']:,.0f}{trend}",
+                     f"{t['roster']:,.0f}", f"{t['power']:,.0f}"])
+    table(["#", "Team", "W-L", "Pace", "L7", "Roster", "Power"], rows, text_cols=2)
+    print("\n_FP per week. Pace = season scoring rate, L7 = last 7 days, Roster = current roster on current form. "
+          "Power blends results (more weight as the season goes) with roster strength, plus record. Arrows = vs yesterday._")
 
 
 def cmd_check(lg, a):
