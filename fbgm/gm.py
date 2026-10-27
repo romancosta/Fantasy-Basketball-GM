@@ -162,9 +162,10 @@ def verdict(lg, add, drop, wk, ros, mode=None):
     return "NO - weekly gain too small for the long-term cost"
 
 
-def cmd_advise(lg, a):
+def cmd_advise(lg, a, quiet_header=False):
     """Best moves: evaluate top free agents against the flex pool and any IR opening."""
-    header(lg)
+    if not quiet_header:
+        header(lg)
     flex = lg.flex_pool(a.mode)
     # Flex players can be streamed or upgraded; core players only via a clear upgrade.
     drops = [p for p in lg.roster() if p.lineup_slot != IR]
@@ -236,6 +237,62 @@ def cmd_rivals(lg, a):
         print(f"  {when:%a %m/%d %I:%M%p} {team:26} {kind:4} {name}{extra}")
 
 
+def cmd_recap(lg, a):
+    """Previous night's fantasy points for my matchup, per player."""
+    day = dt.date.fromisoformat(a.date) if getattr(a, "date", None) else lg.today - dt.timedelta(days=1)
+    sp = lg.date_sp.get(day)
+    if sp is None:
+        print(f"\nNo scoring period on {day}.")
+        return
+    period = lg.week_of(day)
+    box = espn.league("mBoxscore", "mMatchupScore", scoring_period=sp)
+    me = CONFIG["my_team_id"]
+    row = next((m for m in box["schedule"] if m["matchupPeriodId"] == period
+                and me in (m["home"]["teamId"], m.get("away", {}).get("teamId"))), None)
+    if not row:
+        print(f"\nNo matchup found for {day}.")
+        return
+    sides = sorted(("home", "away"), key=lambda s: row[s]["teamId"] != me)
+    print(f"\nRecap {day:%a %m/%d} (week {period}):")
+    for side in sides:
+        t = row[side]
+        day_pts = (t.get("pointsByScoringPeriod") or {}).get(str(sp), 0.0)
+        print(f"  {lg.team_names[t['teamId']]}: {day_pts:.0f} FP")
+        entries = (t.get("rosterForCurrentScoringPeriod") or {}).get("entries", [])
+        played = []
+        for e in entries:
+            pe = e["playerPoolEntry"]
+            st = next((s for s in pe["player"].get("stats", []) if s.get("scoringPeriodId") == sp
+                       and s.get("statSourceId") == 0 and s.get("stats")), None)
+            if st:
+                played.append((e["lineupSlotId"], pe["player"]["fullName"], pe.get("appliedStatTotal", 0.0), st["stats"]))
+        for slot, name, pts, s in sorted(played, key=lambda x: (x[0] == BENCH, -x[2])):
+            line = "/".join(f"{s.get(k, 0):.0f}" for k in ("0", "6", "3", "2", "1", "11"))
+            tag = " (bench, not counted)" if slot == BENCH else ""
+            print(f"    {name:24} {pts:5.0f}  PTS/REB/AST/STL/BLK/TO {line}{tag}")
+    if period != lg.matchup_period:
+        a_, b_ = (row[s] for s in sides)
+        res = "WON" if a_["totalPoints"] > b_["totalPoints"] else "LOST" if a_["totalPoints"] < b_["totalPoints"] else "TIED"
+        print(f"  Week {period} final: {a_['totalPoints']:.0f}-{b_['totalPoints']:.0f} ({res})")
+
+
+def cmd_nightly(lg, a):
+    """Morning report: last night's recap, matchup score + projections, recommended moves."""
+    a.date = None
+    header(lg)
+    cmd_recap(lg, a)
+    me, opp = CONFIG["my_team_id"], lg.opponent_id()
+    print("\nMatchup:")
+    print(f"  {'Team':28} {'Score':>6} {'Proj rest':>9} {'Proj final':>10}")
+    totals = []
+    for tid in (me, opp):
+        total, actual, future = lg.week_projection(lg.roster(tid), tid)
+        totals.append(total)
+        print(f"  {lg.team_names[tid]:28} {actual:6.0f} {future:9.0f} {total:10.0f}")
+    print(f"  Projected margin: {totals[0] - totals[1]:+.0f}")
+    cmd_advise(lg, a, quiet_header=True)
+
+
 def cmd_check(lg, a):
     """Verify our scoring math against ESPN's applied totals and last week's matchup."""
     header(lg)
@@ -268,6 +325,8 @@ def main(argv=None):
     p = sub.add_parser("advise"); p.add_argument("--n", type=int, default=8)
     p = sub.add_parser("rivals"); p.add_argument("--days", type=int, default=7)
     sub.add_parser("check")
+    p = sub.add_parser("recap"); p.add_argument("--date")
+    p = sub.add_parser("nightly"); p.add_argument("--n", type=int, default=3)
     a = ap.parse_args(argv)
     espn.FRESH = a.fresh
     lg = League(dt.date.fromisoformat(a.today) if a.today else None)
