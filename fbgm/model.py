@@ -1,4 +1,5 @@
 """League state, player valuation, schedule, and lineup optimization."""
+import contextlib
 import datetime as dt
 from collections import defaultdict
 from zoneinfo import ZoneInfo
@@ -51,6 +52,10 @@ class Player:
         k, n = POLICY["prior_games"], self.gp
         cur = self.season_fpg or 0.0
         self.rate = (n * cur + k * self.prior) / (n + k) if (n + k) else 0.0
+        # Current form: last-15 average shrunk toward the rate. Used to judge short-term flex moves.
+        kf, n15 = POLICY["form_prior_games"], self.gp15
+        self.form = (n15 * self.last15_fpg + kf * self.rate) / (n15 + kf) if self.last15_fpg is not None and n15 else self.rate
+        self.basis = None   # when set, expected uses it instead of rate (see League.form_basis)
 
     @property
     def availability(self):
@@ -58,7 +63,7 @@ class Player:
 
     @property
     def expected(self):
-        return self.rate * self.availability
+        return (self.rate if self.basis is None else self.basis) * self.availability
 
     @property
     def underperforming(self):
@@ -273,15 +278,53 @@ class League:
         return sum(1 for d in self.remaining_days()
                    if self.plays(pl, d) and not (d == self.today and self.locked(pl, d)))
 
+    def recent_adds(self):
+        """{player id: when} for players we added within flex_recent_days (newest info from ESPN)."""
+        if not hasattr(self, "_recent_adds"):
+            out = {}
+            try:
+                cutoff = self.now - dt.timedelta(days=POLICY["flex_recent_days"])
+                for t in espn.league("mTransactions2").get("transactions", []):
+                    if (t.get("status") != "EXECUTED" or t.get("teamId") != CONFIG["my_team_id"]
+                            or t.get("type") not in ("FREEAGENT", "WAIVER")):
+                        continue
+                    when = dt.datetime.fromtimestamp(t["proposedDate"] / 1000, ET)
+                    if when < cutoff:
+                        continue
+                    for it in t["items"]:
+                        if it["type"] == "ADD":
+                            out[it["playerId"]] = max(when, out.get(it["playerId"], when))
+            except Exception:
+                out = {}
+            self._recent_adds = out
+        return self._recent_adds
+
     def flex_pool(self, mode=None):
-        """Spots we're willing to rotate: the lowest-rated rostered (non-IR) player, plus any
-        others within flex_margin FP/G of him, up to the mode's cap."""
+        """Spots we're rotating: players we recently added and still have, newest first, up to the
+        mode's cap. No recent adds -> the lowest-rated rostered player (plus near-equals)."""
         mode = mode or POLICY["mode"]
-        mine = sorted((p for p in self.roster() if p.lineup_slot != IR), key=lambda p: p.rate)
+        cap = POLICY["flex_slots"][mode]
+        mine = [p for p in self.roster() if p.lineup_slot != IR]
+        adds = self.recent_adds()
+        recent = sorted((p for p in mine if p.id in adds), key=lambda p: adds[p.id], reverse=True)
+        if recent:
+            return recent[:cap]
+        mine.sort(key=lambda p: p.rate)
         if not mine:
             return []
         floor = mine[0].rate + POLICY["flex_margin"]
-        return [p for p in mine if p.rate <= floor][: POLICY["flex_slots"][mode]]
+        return [p for p in mine if p.rate <= floor][:cap]
+
+    @contextlib.contextmanager
+    def form_basis(self):
+        """Within the block, every player's expected FP uses current form instead of the rate."""
+        for p in self.players.values():
+            p.basis = p.form
+        try:
+            yield
+        finally:
+            for p in self.players.values():
+                p.basis = None
 
     # ---- opponent strength ----------------------------------------------
     def defense(self):
@@ -327,9 +370,23 @@ class League:
         games = self.remaining_games(pl)
         return sum(self.matchup_factor(pl, d) for d in games) / len(games) if games else None
 
-    def swap_value(self, add, drop):
-        roster = self.roster()
-        base_total, _, base_future = self.week_projection(roster)
+    def swap_value(self, add, drop, roster=None):
+        """(rest-of-week FP gain on current form, ROS rate gain)."""
+        wk, _ = self.evaluate_swap(add, drop, roster)
+        return wk, add.rate - drop.rate
+
+    def evaluate_swap(self, add, drop, roster=None):
+        """Add `add` for `drop` on `roster` (default: ours), judged on current form and this week's
+        schedule. Returns (week FP gain, [(date, slot) for each remaining day the add starts])."""
+        roster = roster or self.roster()
+        avail = {add: self.available_date(add)}
         new = [p for p in roster if p is not drop] + [add]
-        _, _, new_future = self.week_projection(new, available_from={add: self.available_date(add)})
-        return new_future - base_future, add.rate - drop.rate
+        with self.form_basis():
+            base = self.week_projection(roster)[2]
+            now = self.week_projection(new, available_from=avail)[2]
+            starts = []
+            for d in self.remaining_days():
+                lineup = self.day_projection(new, d, avail)[1]
+                if add in lineup:
+                    starts.append((d, lineup[add]))
+        return now - base, starts

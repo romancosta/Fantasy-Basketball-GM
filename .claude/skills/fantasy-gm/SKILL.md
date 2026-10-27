@@ -41,15 +41,15 @@ Global flags (before the command): `--fresh` (skip 5-min cache), `--mode aggress
   over eligible slots). A pickup's weekly value is only the starts it actually adds, not raw games.
 
 ## GM policy (owner's instructions)
-- **Conservative by default.** The team is good; protect high-average players.
-- **Flex pool** = the lowest-rated rostered player, plus any other player within 3 FP/G of him (near-equal low value),
-  max 2 in conservative mode. Usually 1 spot; a 2nd opens automatically when two players are equally weak.
-  Everyone else is core.
+- **Flex spots only.** Flex = players we added in the last 7 days and still roster (newest first, max 2; 3 in
+  aggressive mode). No recent adds -> the lowest-rated player. Everyone else is core and is NOT touched by daily recs,
+  unless his outlook is badly hurt (OUT/DOUBTFUL, availability <= 0.25) and he can't just go to an open IR slot.
+- Flex moves are judged on **this matchup week and current form** (last-15 blended with the rate), not rest-of-season.
+  A move needs >= 10 projected FP added to the week, from starts the add really gets: the week projection runs the
+  lineup optimizer over the 10 starting slots, so an add whose position is full or who has no useful games gets nothing.
+- The tool recommends the **best single move first**, then re-plans with that move applied for any other flex spot.
+  Alternatives are other adds for the same spot. Neck-and-neck (within 3 FP): prefer the easier SOS.
 - Move frequency is not a concern - churn flex spots as often as it pays.
-- `UPGRADE` = better rest-of-season rate: any amount over a flex player, >= 4 FP/G over a core player.
-  If the weekly number is negative, suggest timing the move.
-- `STREAM` = flex spot only, costs <= 1.5 FP/G long-term, gains >= 15 FP this week.
-- Neck-and-neck adds for the same drop (within 1.5 FP/G ROS and 10 FP this week): prefer the easier SOS, and say so.
 - Never recommend players who are OUT or haven't played this season.
 - If `drops` shows **3+ UNDERPERFORMING** players (8+ games, season < 80% and last-15 < 85% of prior), tell the owner and
   propose `--mode aggressive` (up to 3 flex spots). Don't switch without their OK.

@@ -149,93 +149,102 @@ def cmd_swap(lg, a):
     header(lg)
     add = find(lg, a.add, lg.free_agents)
     drop = find(lg, a.drop, lg.roster())
-    wk, ros = lg.swap_value(add, drop)
-    print(f"\nAdd  {add.name:24} rate {add.rate:5.1f}  games left {lg.games_left(add)}  "
+    wk, starts = lg.evaluate_swap(add, drop)
+    print(f"\nAdd  {add.name:24} form {add.form:5.1f}  rate {add.rate:5.1f}  games left {lg.games_left(add)}  "
           f"({'waivers, usable ' + str(lg.available_date(add)) if add.status == 'WAIVERS' else 'free agent'}){inj(add)}")
-    print(f"Drop {drop.name:24} rate {drop.rate:5.1f}  games left {lg.games_left(drop)}{inj(drop)}")
+    print(f"Drop {drop.name:24} form {drop.form:5.1f}  rate {drop.rate:5.1f}  games left {lg.games_left(drop)}{inj(drop)}")
     print(f"Matchups  add: {opp_list(lg, add)} (SOS {sos_str(lg, add).strip()})")
     print(f"         drop: {opp_list(lg, drop)} (SOS {sos_str(lg, drop).strip()})")
-    print(f"This week: {wk:+.1f} FP | Rest of season: {ros:+.1f} FP/G")
-    print("Verdict: " + verdict(lg, add, drop, wk, ros, a.mode))
+    print(f"This week: {wk:+.1f} FP on current form | {starts_str(starts)} | ROS rate {add.rate - drop.rate:+.1f} FP/G")
+    print("Verdict: " + verdict(lg, add, drop, wk, starts, a.mode))
 
 
-def verdict(lg, add, drop, wk, ros, mode=None):
-    in_flex = drop in lg.flex_pool(mode)
-    bar = 0 if in_flex else POLICY["core_upgrade_min"]
-    if ros >= bar and wk >= 0:
-        return "UPGRADE - better long-term and not worse this week"
-    if ros >= bar:
-        return f"UPGRADE (long-term) - costs {-wk:.0f} FP this week; time the move after this week's games"
-    if not in_flex and ros >= 0:
-        return f"NO - {drop.name} is core; +{ros:.1f} FP/G is below the {bar:.0f} FP/G bar to replace him"
-    if (in_flex and ros >= -POLICY["stream_ros_tolerance"] and wk >= POLICY["stream_min_week_gain"]):
-        return "STREAM - flex spot, small long-term cost, meaningful weekly gain"
-    if not in_flex:
-        return f"NO - {drop.name} is a core player (not in flex pool); long-term cost {ros:.1f} FP/G"
-    return "NO - weekly gain too small for the long-term cost"
+def starts_str(starts):
+    return ("starts " + ", ".join(f"{d:%a} {SLOT_NAMES[s]}" for d, s in starts)) if starts else "never fits the lineup"
+
+
+def core_drop_ok(lg, p):
+    """A core player is only a drop candidate when his outlook is badly hurt and IR can't take him."""
+    if p.availability > POLICY["core_drop_max_availability"]:
+        return False
+    ir_open = lg.ir_slots and not any(x.lineup_slot == IR for x in lg.roster())
+    return not (p.ir_eligible and ir_open)
+
+
+def verdict(lg, add, drop, wk, starts, mode=None):
+    flex = drop in lg.flex_pool(mode)
+    if not flex and not core_drop_ok(lg, drop):
+        return f"NO - {drop.name} is core and his outlook hasn't changed; only flex spots get churned"
+    if not starts:
+        return f"NO - {add.name} can't crack the starting lineup (positions/schedule)"
+    if wk < POLICY["flex_min_week_gain"]:
+        return f"NO - only {wk:+.0f} FP this week (bar {POLICY['flex_min_week_gain']:.0f})"
+    return f"MOVE - {'flex spot' if flex else 'core outlook changed'}, {wk:+.0f} FP this week on current form"
 
 
 def cmd_advise(lg, a, quiet_header=False):
-    """Best moves: evaluate top free agents against the flex pool and any IR opening."""
+    """Best flex moves for this matchup week, on current form, respecting lineup slots."""
     if not quiet_header:
         header(lg)
     flex = lg.flex_pool(a.mode)
-    # Flex players can be streamed or upgraded; core players only via a clear upgrade.
-    drops = [p for p in lg.roster() if p.lineup_slot != IR]
-    cands = sorted(lg.free_agents, key=lambda p: -p.rate)[:40]
+    roster = list(lg.roster())
+    core = [p for p in roster if p not in flex and p.lineup_slot != IR and core_drop_ok(lg, p)]
+    drops = list(flex) + core
+    cands = sorted(lg.free_agents, key=lambda p: -p.form)[:40]
     # Streamers: also consider the best schedule fits this week.
-    cands += sorted(lg.free_agents, key=lambda p: -p.expected * lg.games_left(p))[:20]
-    seen, rows = set(), []
-    for add in cands:
-        # Conservative: never recommend someone who is out or hasn't played yet this season.
-        if add.id in seen or add.availability == 0 or add.gp == 0:
-            continue
-        seen.add(add.id)
-        for drop in drops:
-            if drop not in flex and add.rate - drop.rate < POLICY["core_upgrade_min"]:
-                continue
-            wk, ros = lg.swap_value(add, drop)
-            v = verdict(lg, add, drop, wk, ros, a.mode)
-            if not v.startswith("NO"):
-                rows.append((v.split()[0], ros, wk, add, drop, v))
-    rows.sort(key=lambda r: (r[0] != "UPGRADE", -(r[1] * 10 + r[2] / 5)))
-    # Neck-and-neck moves for the same drop: the easier schedule goes first.
-    ties = []
-    for i in range(len(rows) - 1):
-        x, y = rows[i], rows[i + 1]
-        if (x[4] is y[4] and x[0] == y[0] and abs(x[1] - y[1]) <= POLICY["tie_ros"]
-                and abs(x[2] - y[2]) <= POLICY["tie_week"] and (lg.sos(y[3]) or 1) > (lg.sos(x[3]) or 1)):
-            rows[i], rows[i + 1] = y, x
-            ties.append((y[3], x[3]))
-    print(f"\nFlex pool: {', '.join(f'{p.name} ({p.rate:.1f})' for p in flex)}")
-    if not rows:
-        print("No moves clear the bar. Hold.")
-        cmd_lineup(lg, a, quiet_header=True)
-        return
-    # Plan: best move, then the best remaining move using a different add and drop.
-    plan, used = [], set()
-    for r in rows:
-        if r[3].id not in used and r[4].id not in used:
-            plan.append(r)
-            used |= {r[3].id, r[4].id}
+    cands += sorted(lg.free_agents, key=lambda p: -p.form * p.availability * lg.games_left(p))[:20]
+    cands = [p for p in {c.id: c for c in cands}.values()
+             if p.availability >= POLICY["add_min_availability"] and p.gp > 0]
+    print("\nFlex: " + (", ".join(f"{p.name} (form {p.form:.1f})" for p in flex) or "none")
+          + (f"  | core with changed outlook: {', '.join(f'{p.name}{inj(p)}' for p in core)}" if core else ""))
+
+    def rank(roster, drops, cands):
+        rows = []
+        for add in cands:
+            for drop in drops:
+                wk, starts = lg.evaluate_swap(add, drop, roster)
+                if starts and wk >= POLICY["flex_min_week_gain"]:
+                    rows.append((wk, starts, add, drop))
+        rows.sort(key=lambda r: -r[0])
+        # Neck and neck with the best move: prefer the easier schedule.
+        near = [r for r in rows if r[0] >= rows[0][0] - POLICY["tie_week"]] if rows else []
+        if near:
+            best = max(near, key=lambda r: (lg.sos(r[2]) or 1.0, r[0]))
+            rows.remove(best)
+            rows.insert(0, best)
+        return rows
+
+    # Best single move first; then re-plan on the roster with that move applied.
+    plan, alts, cur, left = [], [], roster, list(drops)
+    for i in range(len(flex)):
+        rows = rank(cur, left, cands)
+        if not rows:
+            break
+        best = rows[0]
+        plan.append(best)
+        if i == 0:
+            alts = [r for r in rows[1:] if r[3] is best[3]][: a.n]
+        cur = [p for p in cur if p is not best[3]] + [best[2]]
+        left = [p for p in left if p is not best[3]]
+        cands = [p for p in cands if p is not best[2]]
 
     def show(r):
-        kind, ros, wk, add, drop, _ = r
-        print(f"  {kind:7} +{add.name} / -{drop.name}{'' if drop in flex else ' (core)'}: "
-              f"week {wk:+.0f} FP, ROS {ros:+.1f} FP/G, SOS {sos_str(lg, add).strip()}"
+        wk, starts, add, drop = r
+        tag = "" if drop in flex else " (core, outlook changed)"
+        print(f"  MOVE +{add.name} / -{drop.name}{tag}: week {wk:+.0f} FP, form {add.form:.1f} vs {drop.form:.1f}, "
+              f"{starts_str(starts)}, SOS {sos_str(lg, add).strip()}"
               f"{' (waivers)' if add.status == 'WAIVERS' else ''}{inj(add)}")
 
-    print("Recommended moves:")
-    for r in plan:
-        show(r)
-    alts = [r for r in rows if r not in plan][: a.n]
-    if alts:
-        print("Alternatives:")
-        for r in alts:
+    if not plan:
+        print("No flex move clears the bar. Hold.")
+    else:
+        print("Recommended moves:")
+        for r in plan:
             show(r)
-    for win, lose in ties:
-        print(f"  Tiebreak: {win.name} over {lose.name} - neck and neck, easier matchups "
-              f"(SOS {sos_str(lg, win).strip()} vs {sos_str(lg, lose).strip()})")
+        if alts:
+            print("Alternatives for the same spot:")
+            for r in alts:
+                show(r)
     cmd_lineup(lg, a, quiet_header=True)
 
 
