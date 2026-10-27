@@ -1,6 +1,7 @@
 """League state, player valuation, schedule, and lineup optimization."""
 import contextlib
 import datetime as dt
+import math
 from collections import defaultdict
 from zoneinfo import ZoneInfo
 
@@ -169,6 +170,7 @@ class League:
         self.matchup_period = self.raw["status"]["currentMatchupPeriod"]
         week_start = first - dt.timedelta(days=first.weekday()) + dt.timedelta(weeks=self.matchup_period - 1)
         self.week_days = [d for d in (week_start + dt.timedelta(days=i) for i in range(7)) if d >= first]
+        self.week_end = lambda period: week_start + dt.timedelta(weeks=period - self.matchup_period, days=6)
 
     def game_start(self, player, day):
         return self.games[player.pro_team].get(day)
@@ -267,6 +269,62 @@ class League:
         today_live = actual.get(self.date_sp.get(self.today), 0.0)
         future = sum(self.day_projection(roster, d, available_from)[0] for d in self.remaining_days())
         return done + today_live + future, done + today_live, future
+
+    def win_probability(self, team_id=None, opp_id=None):
+        """Chance team_id outscores opp_id this week: projected margin over the spread of the remaining
+        player-games (game_sd_ratio of each start's expected FP) plus projection error."""
+        team_id = team_id or CONFIG["my_team_id"]
+        opp_id = opp_id or self.opponent_id(team_id)
+        margin, var = 0.0, 0.0
+        for tid, sign in ((team_id, 1), (opp_id, -1)):
+            roster = self.roster(tid)
+            total, _, future = self.week_projection(roster, tid)
+            margin += sign * total
+            var += (POLICY["model_sd_ratio"] * future) ** 2
+            for d in self.remaining_days():
+                var += sum((POLICY["game_sd_ratio"] * p.expected) ** 2 for p in self.day_projection(roster, d)[1])
+        if var <= 0:
+            return 1.0 if margin > 0 else 0.0 if margin < 0 else 0.5
+        return 0.5 * (1 + math.erf(margin / math.sqrt(2 * var)))
+
+    # ---- power rankings -------------------------------------------------
+    def games_per_week(self):
+        """League-average NBA games per team per 7 days."""
+        days = (max(self.sp_date.values()) - min(self.sp_date.values())).days + 1
+        teams = [g for g in self.games.values() if g]  # games is a defaultdict; skip teamless lookups
+        return 7 * sum(len(g) for g in teams) / (len(teams) * days)
+
+    def power_rankings(self, before=None):
+        """[(team_id, info)] best first, from results on days before `before` (default today) and current
+        rosters. All values are FP per week except pf (season total)."""
+        before = before or self.today
+        played = sorted(sp for sp, d in self.sp_date.items() if d < before)
+        days = len(played)
+        recent = {sp for sp in played if self.sp_date[sp] >= before - dt.timedelta(days=7)}
+        info = {tid: {"pf": 0.0, "l7": 0.0, "w": 0, "l": 0, "t": 0} for tid in self.teams}
+        for m in self.raw["schedule"]:
+            sides = [m[s] for s in ("home", "away") if s in m]
+            pts = [{int(k): v for k, v in (s.get("pointsByScoringPeriod") or {}).items()} for s in sides]
+            for s, p in zip(sides, pts):
+                t = info[s["teamId"]]
+                t["pf"] += sum(v for sp, v in p.items() if sp in played)
+                t["l7"] += sum(v for sp, v in p.items() if sp in recent)
+            # A week counts toward the record once its last day (Sunday) is before the cutoff.
+            if len(sides) == 2 and self.week_end(m["matchupPeriodId"]) < before:
+                a, b = (s.get("totalPoints", 0.0) for s in sides)
+                for s, mine, theirs in ((sides[0], a, b), (sides[1], b, a)):
+                    info[s["teamId"]]["w" if mine > theirs else "l" if mine < theirs else "t"] += 1
+        gpw = self.games_per_week()
+        trust = days / (days + POLICY["power_trust_days"]) if days else 0.0
+        rs = POLICY["power_recent_share"]
+        with self.form_basis():
+            for tid, t in info.items():
+                t["pace"] = 7 * t["pf"] / days if days else 0.0
+                t["l7"] = 7 * t["l7"] / len(recent) if recent else 0.0
+                t["roster"] = gpw * sum(p.expected for p in self.roster(tid) if p.lineup_slot != IR)
+                perf = (1 - rs) * t["pace"] + rs * t["l7"]
+                t["power"] = trust * perf + (1 - trust) * t["roster"] + POLICY["power_record_fp"] * (t["w"] - t["l"])
+        return sorted(info.items(), key=lambda kv: -kv[1]["power"])
 
     def available_date(self, pl):
         """When a newly added player could first be started."""

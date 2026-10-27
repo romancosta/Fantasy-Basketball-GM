@@ -17,7 +17,7 @@ python3 -m fbgm drops              # roster ranked by value; FLEX + UNDERPERFORM
 python3 -m fbgm swap "<add>" "<drop>"
 python3 -m fbgm rivals [--days 7]  # other teams' adds/drops
 python3 -m fbgm recap [--date D]   # last night: points per player for both matchup teams
-python3 -m fbgm nightly            # morning report: recap + score + projections + moves
+python3 -m fbgm nightly            # morning report (markdown): outlook, matchup grid, moves, power rankings
 python3 -m fbgm check              # scoring + date-mapping self-test
 ```
 Global flags (before the command): `--fresh` (skip 5-min cache), `--mode aggressive`, `--today YYYY-MM-DD`.
@@ -41,9 +41,11 @@ Global flags (before the command): `--fresh` (skip 5-min cache), `--mode aggress
   over eligible slots). A pickup's weekly value is only the starts it actually adds, not raw games.
 
 ## GM policy (owner's instructions)
-- **Flex spots only.** Flex = players we added in the last 7 days and still roster (newest first, max 2; 3 in
-  aggressive mode). No recent adds -> the lowest-rated player. Everyone else is core and is NOT touched by daily recs,
-  unless his outlook is badly hurt (OUT/DOUBTFUL, availability <= 0.25) and he can't just go to an open IR slot.
+- **Flex spots first.** Flex = players we added in the last 7 days and still roster (newest first, max 2; 3 in
+  aggressive mode). No recent adds -> the lowest-rated player. Everyone else is core and is only dropped when his
+  outlook is badly hurt (OUT/DOUBTFUL, availability <= 0.25, no open IR slot) or for a **proven upgrade**: an add with
+  8+ games, a rest-of-season rate 3+ FP/G higher, and current form at least as good. Never drop a core player for
+  someone less proven.
 - Flex moves are judged on **this matchup week and current form** (last-15 blended with the rate), not rest-of-season.
   A move needs >= 10 projected FP added to the week, from starts the add really gets: the week projection runs the
   lineup optimizer over the 10 starting slots, so an add whose position is full or who has no useful games gets nothing.
@@ -54,6 +56,18 @@ Global flags (before the command): `--fresh` (skip 5-min cache), `--mode aggress
 - If `drops` shows **3+ UNDERPERFORMING** players (8+ games, season < 80% and last-15 < 85% of prior), tell the owner and
   propose `--mode aggressive` (up to 3 flex spots). Don't switch without their OK.
 - Always open/use an empty IR slot for an OUT player before dropping anyone.
+
+## Morning report (`nightly`)
+Prints the finished report in markdown; the reader only replaces `{{OVERVIEW}}` with 2-3 sentences.
+- **Outlook** = win chance from the projected margin vs the spread of remaining player-games (40% of each start's
+  expected FP) plus 6% projection error per team: 🔒 Guaranteed W (97%+), 🟢 Strong (80%+), 🟢 Lean W (60%+),
+  🟡 Toss-up, 🟠 Lean L (<40%), 🔴 Weak (<20%), 💀 Loss incoming (<3%).
+- **Mondays**: separate "Week N final" (🏆/❌) and "Week N+1 preview" sections, plus a set-your-lineups reminder.
+- **Bench alert** (red): shown only when our bench scored while some of the 10 starting slots sat empty; the FP is
+  what the best hindsight lineup would have added.
+- **Power rankings** (FP/week): results (season pace 60% / last 7 days 40%) weighted days/(days+21) against roster
+  strength (current roster on current form x league games per week), plus 25 FP per game over .500. Arrows compare
+  with the ranking as of yesterday (same rosters, one day less of results).
 
 ## Giving advice
 - Lead with the action, then the numbers (rate, week delta, ROS delta, games left). Keep it short.

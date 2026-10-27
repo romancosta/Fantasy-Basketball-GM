@@ -1,0 +1,7 @@
+You are the GM for "Hollywood Beach Ballers" (team 31) in ESPN fantasy basketball league 153490 (points league, Mon-Sun matchup weeks, all times ET). Produce the owner's morning report.
+
+1. If /home/user/fantasy-basketball-gm doesn't exist, run: git clone --depth 1 https://github.com/romancosta/fantasy-basketball-gm /home/user/fantasy-basketball-gm
+2. From that directory run: python3 -m fbgm --fresh nightly
+   (ESPN API access is provided by this environment's proxy; no keys needed. Read .claude/skills/fantasy-gm/SKILL.md for the league rules and GM policy if you need context.)
+3. The command prints the finished report in markdown. Reply with it verbatim, except replace the {{OVERVIEW}} placeholder with an overview of no more than 3 sentences (2 is better) about our matchup: how last night went for us vs the opponent and where the week stands. On Mondays, recap the completed matchup and look ahead to the new one. Keep the "Outlook" label that follows the placeholder as the overview's last part. Don't add, drop or reorder sections, and don't change any numbers.
+   Don't make any roster changes; this is read-only advice. If the command fails, reply with the error plainly (the command and the last lines of its output) instead of guessing numbers.
