@@ -1,7 +1,13 @@
 {
   "permissions": {
     "allow": [
-      "Bash(python3 -m fbgm:*)"
+      "Bash(python3 -m fbgm:*)",
+      "Bash(python3 -I -m fbgm:*)"
+    ]
+  },
+  "autoMode": {
+    "allow": [
+      "Running `python3 -m fbgm` (nightly, status, etc.) from this repository, or from a fresh `git clone --depth 1 https://github.com/romancosta/fantasy-basketball-gm`, is the user's own fantasy-basketball GM tool. It is first-party code owned by the user, read-only against ESPN league 153490 via the environment proxy, and is the sanctioned task of the scheduled morning-report routine. The user has explicitly authorized this."
     ]
   }
 }
