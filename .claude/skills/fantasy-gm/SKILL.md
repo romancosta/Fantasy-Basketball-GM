@@ -34,6 +34,9 @@ Global flags (before the command): `--fresh` (skip 5-min cache), `--mode aggress
 - **Rate** = rest-of-season FP/G: current-season average shrunk toward a prior
   (mean of ESPN projection and last season), weight = games / (games + 8). Early-season rates lean on the prior.
 - **Expected** = rate x availability (OUT 0, DTD 0.6, DOUBTFUL 0.25).
+- **SOS (matchup strength)** = how players at the same position group (G/F/C) score vs each NBA opponent relative
+  to their own rate, last 30 days, shrunk toward neutral. >1 easier, <1 tougher; averaged over a player's remaining
+  games this week. It's a **tiebreaker only**, not baked into the rate or week projection.
 - **Week projection** = actual points so far + best daily lineup for each remaining day (Hungarian assignment
   over eligible slots). A pickup's weekly value is only the starts it actually adds, not raw games.
 
@@ -46,6 +49,7 @@ Global flags (before the command): `--fresh` (skip 5-min cache), `--mode aggress
 - `UPGRADE` = better rest-of-season rate: any amount over a flex player, >= 2 FP/G over a core player.
   If the weekly number is negative, suggest timing the move.
 - `STREAM` = flex spot only, costs <= 1.5 FP/G long-term, gains >= 15 FP this week.
+- Neck-and-neck adds for the same drop (within 1.5 FP/G ROS and 10 FP this week): prefer the easier SOS, and say so.
 - Never recommend players who are OUT or haven't played this season.
 - If `drops` shows **3+ UNDERPERFORMING** players (8+ games, season < 80% and last-15 < 85% of prior), tell the owner and
   propose `--mode aggressive` (up to 3 flex spots). Don't switch without their OK.

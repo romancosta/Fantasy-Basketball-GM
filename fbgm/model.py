@@ -7,6 +7,7 @@ from . import espn
 from .config import AVAILABILITY, BENCH, CONFIG, IR, POLICY, SCORING_CONFIRMED, STAT_GP
 
 ET = ZoneInfo("America/New_York")
+POS_GROUP = {1: "G", 2: "G", 3: "F", 4: "F", 5: "C"}  # ESPN defaultPositionId
 
 
 def fantasy_points(avg_stats, scoring):
@@ -19,6 +20,7 @@ class Player:
         self.id = p["id"]
         self.name = p["fullName"]
         self.pro_team = p["proTeamId"]
+        self.pos_group = POS_GROUP.get(p.get("defaultPositionId"), "F")
         self.slots = set(p["eligibleSlots"]) - {BENCH, IR}
         self.ir_eligible = IR in p["eligibleSlots"]
         self.injury = p.get("injuryStatus") or "ACTIVE"
@@ -143,6 +145,7 @@ class League:
     # ---- schedule -------------------------------------------------------
     def _schedule(self):
         self.games = defaultdict(dict)   # pro_team -> {date: start datetime}
+        self.opponent = {}               # (pro_team, date) -> opposing pro_team
         self.sp_date = {}
         self.pro_abbrev = {}
         for t in espn.pro_schedule():
@@ -151,6 +154,8 @@ class League:
                 for g in gs:
                     start = dt.datetime.fromtimestamp(g["date"] / 1000, ET)
                     self.games[t["id"]][start.date()] = start
+                    opp = g["awayProTeamId"] if g["homeProTeamId"] == t["id"] else g["homeProTeamId"]
+                    self.opponent[(t["id"], start.date())] = opp
                     self.sp_date[int(sp)] = start.date()
         self.date_sp = {d: sp for sp, d in self.sp_date.items()}
         # Matchup weeks run Monday-Sunday; week 1 is the partial opening week.
@@ -277,6 +282,50 @@ class League:
             return []
         floor = mine[0].rate + POLICY["flex_margin"]
         return [p for p in mine if p.rate <= floor][: POLICY["flex_slots"][mode]]
+
+    # ---- opponent strength ----------------------------------------------
+    def defense(self):
+        """{(opp_team, pos_group): factor}: how players score vs each NBA team relative to their
+        own rate, over the last DEF_WINDOW days. >1 = easier matchup. Shrunk toward 1.0."""
+        if hasattr(self, "_defense"):
+            return self._defense
+        today_sp = self.date_sp.get(self.today) or max(sp for sp, d in self.sp_date.items() if d < self.today)
+        sums = defaultdict(lambda: [0.0, 0])
+        for sp in range(max(1, today_sp - POLICY["def_window"]), today_sp):
+            day = self.sp_date.get(sp)
+            for e in espn.game_logs(sp):
+                pl = self.players.get(e["id"])
+                if pl is None or pl.rate < POLICY["def_min_rate"]:
+                    continue
+                line = next((s for s in e["player"].get("stats", []) if s.get("scoringPeriodId") == sp
+                             and s.get("statSourceId") == 0 and s.get("stats")), None)
+                opp = self.opponent.get((e["player"]["proTeamId"], day))
+                if not line or opp is None or not line["stats"].get("40"):  # skip DNPs (0 minutes)
+                    continue
+                r = min(fantasy_points(line["stats"], self.scoring) / pl.rate, 3.0)
+                for key in ((opp, None), (opp, pl.pos_group)):
+                    sums[key][0] += r
+                    sums[key][1] += 1
+        k_all, k_pos = POLICY["def_prior_all"], POLICY["def_prior_pos"]
+        overall = {opp: (s + k_all) / (n + k_all) for (opp, g), (s, n) in sums.items() if g is None}
+        self._defense = {(opp, g): (s + k_pos * overall[opp]) / (n + k_pos)
+                         for (opp, g), (s, n) in sums.items() if g is not None}
+        self._defense.update({(opp, None): f for opp, f in overall.items()})
+        return self._defense
+
+    def matchup_factor(self, pl, day):
+        opp = self.opponent.get((pl.pro_team, day))
+        d = self.defense()
+        return d.get((opp, pl.pos_group), d.get((opp, None), 1.0))
+
+    def remaining_games(self, pl):
+        return [d for d in self.remaining_days()
+                if self.plays(pl, d) and not (d == self.today and self.locked(pl, d))]
+
+    def sos(self, pl):
+        """Average matchup factor over this week's remaining games (1.0 = neutral)."""
+        games = self.remaining_games(pl)
+        return sum(self.matchup_factor(pl, d) for d in games) / len(games) if games else None
 
     def swap_value(self, add, drop):
         roster = self.roster()

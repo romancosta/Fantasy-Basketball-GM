@@ -21,6 +21,16 @@ def short(pl):
     return parts[-1]
 
 
+def sos_str(lg, pl):
+    f = lg.sos(pl)
+    return "  -" if f is None else f"{f:4.2f}"
+
+
+def opp_list(lg, pl):
+    return ", ".join(f"{d:%a} {lg.pro_abbrev[lg.opponent[(pl.pro_team, d)]]} {lg.matchup_factor(pl, d):.2f}"
+                     for d in lg.remaining_games(pl)) or "no games left"
+
+
 def inj(pl):
     return "" if pl.injury == "ACTIVE" else f" [{pl.injury}]"
 
@@ -102,12 +112,13 @@ def cmd_fa(lg, a):
         want = {k for k, v in SLOT_NAMES.items() if v == a.pos.upper()}
         fas = [p for p in fas if p.slots & want]
     fas = sorted(fas, key=lambda p: -p.rate)[: a.n]
-    print(f"\n{'Player':24} {'Pos':9} {'St':2} {'Rate':>5} {'Szn':>5} {'L15':>5} {'Proj':>5} {'GP':>3} {'Gms':>3} {'Own%':>5}")
+    print(f"\n{'Player':24} {'Pos':9} {'St':2} {'Rate':>5} {'Szn':>5} {'L15':>5} {'Proj':>5} {'GP':>3} {'Gms':>3} {'SOS':>4} {'Own%':>5}")
     for p in fas:
         print(f"{p.name[:24]:24} {pos(p):9} {'W' if p.status == 'WAIVERS' else 'FA':2} {p.rate:5.1f} "
               f"{f1(p.season_fpg):>5} {f1(p.last15_fpg):>5} {f1(p.proj_fpg):>5} {p.gp:3} {lg.games_left(p):3} "
-              f"{p.owned:5.1f}{inj(p)}")
-    print("Rate = blended rest-of-season FP/G. Gms = unlocked games left this week. W = on waivers.")
+              f"{sos_str(lg, p)} {p.owned:5.1f}{inj(p)}")
+    print("Rate = blended rest-of-season FP/G. Gms = unlocked games left this week. W = on waivers.\n"
+          "SOS = this week's matchup strength (>1 easier, <1 tougher), by position, last 30 days.")
 
 
 def cmd_drops(lg, a):
@@ -142,6 +153,8 @@ def cmd_swap(lg, a):
     print(f"\nAdd  {add.name:24} rate {add.rate:5.1f}  games left {lg.games_left(add)}  "
           f"({'waivers, usable ' + str(lg.available_date(add)) if add.status == 'WAIVERS' else 'free agent'}){inj(add)}")
     print(f"Drop {drop.name:24} rate {drop.rate:5.1f}  games left {lg.games_left(drop)}{inj(drop)}")
+    print(f"Matchups  add: {opp_list(lg, add)} (SOS {sos_str(lg, add).strip()})")
+    print(f"         drop: {opp_list(lg, drop)} (SOS {sos_str(lg, drop).strip()})")
     print(f"This week: {wk:+.1f} FP | Rest of season: {ros:+.1f} FP/G")
     print("Verdict: " + verdict(lg, add, drop, wk, ros, a.mode))
 
@@ -186,6 +199,14 @@ def cmd_advise(lg, a, quiet_header=False):
             if not v.startswith("NO"):
                 rows.append((v.split()[0], ros, wk, add, drop, v))
     rows.sort(key=lambda r: (r[0] != "UPGRADE", -(r[1] * 10 + r[2] / 5)))
+    # Neck-and-neck moves for the same drop: the easier schedule goes first.
+    ties = []
+    for i in range(len(rows) - 1):
+        x, y = rows[i], rows[i + 1]
+        if (x[4] is y[4] and x[0] == y[0] and abs(x[1] - y[1]) <= POLICY["tie_ros"]
+                and abs(x[2] - y[2]) <= POLICY["tie_week"] and (lg.sos(y[3]) or 1) > (lg.sos(x[3]) or 1)):
+            rows[i], rows[i + 1] = y, x
+            ties.append((y[3], x[3]))
     print(f"\nFlex pool: {', '.join(f'{p.name} ({p.rate:.1f})' for p in flex)}")
     if not rows:
         print("No moves clear the bar. Hold.")
@@ -201,7 +222,8 @@ def cmd_advise(lg, a, quiet_header=False):
     def show(r):
         kind, ros, wk, add, drop, _ = r
         print(f"  {kind:7} +{add.name} / -{drop.name}{'' if drop in flex else ' (core)'}: "
-              f"week {wk:+.0f} FP, ROS {ros:+.1f} FP/G{' (waivers)' if add.status == 'WAIVERS' else ''}{inj(add)}")
+              f"week {wk:+.0f} FP, ROS {ros:+.1f} FP/G, SOS {sos_str(lg, add).strip()}"
+              f"{' (waivers)' if add.status == 'WAIVERS' else ''}{inj(add)}")
 
     print("Recommended moves:")
     for r in plan:
@@ -211,6 +233,9 @@ def cmd_advise(lg, a, quiet_header=False):
         print("Alternatives:")
         for r in alts:
             show(r)
+    for win, lose in ties:
+        print(f"  Tiebreak: {win.name} over {lose.name} - neck and neck, easier matchups "
+              f"(SOS {sos_str(lg, win).strip()} vs {sos_str(lg, lose).strip()})")
     cmd_lineup(lg, a, quiet_header=True)
 
 
