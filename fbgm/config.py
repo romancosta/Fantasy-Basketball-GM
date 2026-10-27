@@ -28,17 +28,22 @@ SCORING_CONFIRMED = {
 STAT_GP = "42"
 
 POLICY = {
-    # Flex pool = lowest-rated rostered player, plus anyone within flex_margin FP/G of him
-    # (near-equal low value), capped per mode.
+    # Flex pool = players we added in the last flex_recent_days (still rostered), newest first,
+    # capped per mode. With no recent adds it falls back to the lowest-rated player (plus anyone
+    # within flex_margin FP/G of him).
     "mode": "conservative",
     "flex_slots": {"conservative": 2, "aggressive": 3},
+    "flex_recent_days": 7,
     "flex_margin": 3.0,
-    # Dropping a core (non-flex) player needs a clear long-term upgrade.
-    "core_upgrade_min": 4.0,
-    # A stream may cost at most this much rest-of-season FP/G vs the player dropped...
-    "stream_ros_tolerance": 1.5,
-    # ...and only if it gains at least this many projected FP this matchup week.
-    "stream_min_week_gain": 15.0,
+    # Flex moves are judged on this matchup week and current form (last-15 blended with the rate).
+    # A move must add at least this many projected FP to the week, from starts the add really gets.
+    "flex_min_week_gain": 10.0,
+    "form_prior_games": 5,
+    # Core players are only drop candidates when their outlook is badly hurt (availability at or
+    # below this, e.g. OUT/DOUBTFUL) and they can't just go to an open IR slot.
+    "core_drop_max_availability": 0.25,
+    # Adds must be at least this likely to play (skips OUT/DOUBTFUL/DTD adds).
+    "add_min_availability": 0.6,
     # Shrinkage: current-season games needed to weigh equal to the prior.
     "prior_games": 8,
     # Underperformer: >= min games and current + last-15 rates below these shares of the prior.
@@ -52,9 +57,8 @@ POLICY = {
     "def_prior_all": 40,
     "def_prior_pos": 20,
     "def_min_rate": 15.0,
-    # Moves this close are "neck and neck"; break the tie on matchup strength.
-    "tie_ros": 1.5,
-    "tie_week": 10.0,
+    # Moves within this many week FP of the best are "neck and neck"; break the tie on matchup strength.
+    "tie_week": 3.0,
 }
 
 # Chance a player plays, by ESPN injury status.
