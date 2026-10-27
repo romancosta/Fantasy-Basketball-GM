@@ -63,23 +63,31 @@ POLICY = {
     # rest-of-season rate at least this much higher, and current form at least as good.
     "core_upgrade_min_gp": 8,
     "core_upgrade_rate_gain": 3.0,
-    # Win chance: per player-game FP spread as a share of his expected FP, plus projection error as a
-    # share of each team's remaining projected FP.
-    "game_sd_ratio": 0.4,
+    # Win chance: simulate the rest of the week this many times, drawing each start's FP from real game-to-game
+    # swings (last def_window days), times a projection-error factor (sd as a share of remaining FP).
+    # Healthy starters miss this share of games (rest, late scratches).
+    "sims": 4000,
     "model_sd_ratio": 0.06,
+    "dnp_rate": 0.05,
     # Power rankings (FP/week units): results get weight days / (days + trust_days) against roster
     # strength; recent_share of the results part is the last 7 days; each game over .500 adds record_fp.
     "power_trust_days": 21,
     "power_recent_share": 0.4,
     "power_record_fp": 25.0,
-    # The week counts as decided (lead with it, skip this week's moves) at or beyond these win chances.
-    "decided_win": 0.97,
-    "decided_loss": 0.03,
+    # The week counts as decided (lead with it, skip this week's moves) only under a stress test: the other
+    # side gets its upside (everyone not OUT plays at his better of rate/form, and it streams up to
+    # upside_streamers free agents a day into idle players' spots) and we still win decided_win of the
+    # simulations. A loss is decided when we get that upside (i.e. even our best moves) and still win
+    # no more than decided_loss.
+    "upside_streamers": 2,
+    "decided_win": 0.99,
+    "decided_loss": 0.01,
 }
 
 # Outlook labels by minimum win chance, best first.
-OUTLOOK = [(0.97, "🔒 Guaranteed W"), (0.80, "🟢 Strong"), (0.60, "🟢 Lean W"), (0.40, "🟡 Toss-up"),
-           (0.20, "🟠 Lean L"), (0.03, "🔴 Weak"), (0.0, "💀 Loss incoming")]
+# 🔒 Guaranteed W and 💀 Loss incoming are reserved for weeks that pass the decided stress test.
+OUTLOOK = [(0.80, "🟢 Strong"), (0.60, "🟢 Lean W"), (0.40, "🟡 Toss-up"), (0.20, "🟠 Lean L"), (0.0, "🔴 Weak")]
+DECIDED_LABEL = {"W": "🔒 Guaranteed W", "L": "💀 Loss incoming"}
 
 # Chance a player plays, by ESPN injury status.
 AVAILABILITY = {

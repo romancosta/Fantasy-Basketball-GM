@@ -4,7 +4,7 @@ import datetime as dt
 import sys
 
 from . import espn
-from .config import BENCH, CONFIG, IR, OUTLOOK, POLICY, SLOT_NAMES
+from .config import BENCH, CONFIG, DECIDED_LABEL, IR, OUTLOOK, POLICY, SLOT_NAMES
 from .model import ET, League, fantasy_points, hungarian_max
 
 
@@ -374,6 +374,30 @@ def outlook(p):
     return next(label for floor, label in OUTLOOK if p >= floor)
 
 
+def week_decided(lg, me, opp, proj):
+    """('W' | 'L', banner) when the week passes the stress test, else None. Win: the opponent gets its upside
+    (everyone plays, streams free agents daily) and we still win decided_win of the simulations. Loss: we get
+    that upside - every move we could make - and still win no more than decided_loss."""
+    lead = proj[me][1] - proj[opp][1]
+    days = len(lg.remaining_days())
+    left = f"{days} day{'s' * (days != 1)} left"
+    name = lg.team_names[opp]
+    n = POLICY["sims"]
+    if lead > 0:
+        p = lg.simulate_week(upside=opp, team_id=me, opp_id=opp)[0]
+        if p >= POLICY["decided_win"]:
+            return "W", (f"🔒 **WEEK {lg.matchup_period} DECIDED: WIN** · up {lead:,.0f} with {left}. Even if {name} "
+                         f"plays everyone and streams free agents every day, we win {p:.1%} of {n:,} simulations. "
+                         f"No roster moves needed this week.")
+    elif lead < 0:
+        p = lg.simulate_week(upside=me, team_id=me, opp_id=opp)[0]
+        if p <= POLICY["decided_loss"]:
+            return "L", (f"💀 **WEEK {lg.matchup_period} DECIDED: LOSS** · down {-lead:,.0f} with {left}. Even with "
+                         f"all our players playing and us streaming free agents every day, we win {p:.1%} of "
+                         f"{n:,} simulations. No moves will flip it this week.")
+    return None
+
+
 def scored(totals):
     """Per-team cells '1,992 (+285) 🟢' marking the leader and trailer, for two totals."""
     a, b = totals
@@ -416,15 +440,11 @@ def cmd_nightly(lg, a):
     if lg.scoring_mismatch:
         print(f"\n!! League scoring differs from the confirmed table: {lg.scoring_mismatch}")
     proj = {tid: lg.week_projection(lg.roster(tid), tid) for tid in (me, opp)}
-    margin = proj[me][0] - proj[opp][0]
-    decided = "W" if p >= POLICY["decided_win"] else "L" if p <= POLICY["decided_loss"] else None
+    decided = week_decided(lg, me, opp, proj)
     if decided:
-        days = len(lg.remaining_days())
-        head = "🔒 **WEEK {} DECIDED: WIN**" if decided == "W" else "💀 **WEEK {} DECIDED: LOSS**"
-        print(f"\n> {head.format(lg.matchup_period)} · projected {margin:+,.0f} with {days} day{'s' * (days != 1)} "
-              f"left ({p:.0%} win chance). No roster moves needed this week"
-              f"{'' if decided == 'W' else ' - nothing realistic flips it'}.")
-    print(f"\n{{{{OVERVIEW}}}} **Outlook: {outlook(p)}** ({p:.0%} win chance)")
+        print(f"\n> {decided[1]}")
+    label = DECIDED_LABEL[decided[0]] if decided else outlook(p)
+    print(f"\n{{{{OVERVIEW}}}} **Outlook: {label}** ({p:.0%} win chance)")
 
     # Today: points already scored in started games + best lineup for the games still to come.
     sp_today = lg.date_sp.get(lg.today)
