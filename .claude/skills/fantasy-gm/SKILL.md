@@ -62,6 +62,8 @@ Prints the finished report in markdown; the reader only replaces `{{OVERVIEW}}` 
 - **Outlook** = win chance from the projected margin vs the spread of remaining player-games (40% of each start's
   expected FP) plus 6% projection error per team: 🔒 Guaranteed W (97%+), 🟢 Strong (80%+), 🟢 Lean W (60%+),
   🟡 Toss-up, 🟠 Lean L (<40%), 🔴 Weak (<20%), 💀 Loss incoming (<3%).
+- **Matchup grid**: yesterday, today's projection (live points + best lineup for games still to come), week score,
+  week projection with margin.
 - **Mondays**: separate "Week N final" (🏆/❌) and "Week N+1 preview" sections, plus a set-your-lineups reminder.
 - **Bench alert** (red): shown only when our bench scored while some of the 10 starting slots sat empty; the FP is
   what the best hindsight lineup would have added.
