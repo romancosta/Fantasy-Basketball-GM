@@ -2,6 +2,7 @@
 import contextlib
 import datetime as dt
 import math
+import random
 from collections import defaultdict
 from zoneinfo import ZoneInfo
 
@@ -270,22 +271,53 @@ class League:
         future = sum(self.day_projection(roster, d, available_from)[0] for d in self.remaining_days())
         return done + today_live + future, done + today_live, future
 
-    def win_probability(self, team_id=None, opp_id=None):
-        """Chance team_id outscores opp_id this week: projected margin over the spread of the remaining
-        player-games (game_sd_ratio of each start's expected FP) plus projection error."""
+    def _starts(self, tid, upside):
+        """[(FP rate, chance he plays)] for each remaining start in tid's best daily lineups. upside: every
+        player who isn't OUT plays, at the better of rate and form, and the team streams free agents."""
+        roster = [p for p in self.roster(tid) if p.lineup_slot != IR]
+        fas = sorted((p for p in self.free_agents if p.status == "FREEAGENT"
+                      and p.availability >= POLICY["add_min_availability"] and p.gp > 0), key=lambda p: -p.form)
+        out = []
+        for d in self.remaining_days():
+            cands = list(roster)
+            if upside:
+                # Each player without a game that day could be dropped for a streamer who has one.
+                idle = sum(1 for p in roster if not self.plays(p, d))
+                cands += [p for p in fas if self.plays(p, d)][:min(idle, POLICY["upside_streamers"])]
+            for p in self.day_projection(cands, d)[1]:
+                if upside:
+                    out.append((max(p.rate, p.form), 1.0))
+                else:
+                    out.append((p.rate, p.availability * (1 - POLICY["dnp_rate"])))
+        return out
+
+    def simulate_week(self, upside=None, team_id=None, opp_id=None, sims=None):
+        """Monte Carlo of the rest of the week: each start draws a real game-to-game swing (game_ratios),
+        each team gets a projection-error factor. upside: team id that gets its best case (see _starts).
+        Returns (win chance, sorted final margins)."""
         team_id = team_id or CONFIG["my_team_id"]
         opp_id = opp_id or self.opponent_id(team_id)
-        margin, var = 0.0, 0.0
-        for tid, sign in ((team_id, 1), (opp_id, -1)):
-            roster = self.roster(tid)
-            total, _, future = self.week_projection(roster, tid)
-            margin += sign * total
-            var += (POLICY["model_sd_ratio"] * future) ** 2
-            for d in self.remaining_days():
-                var += sum((POLICY["game_sd_ratio"] * p.expected) ** 2 for p in self.day_projection(roster, d)[1])
-        if var <= 0:
-            return 1.0 if margin > 0 else 0.0 if margin < 0 else 0.5
-        return 0.5 * (1 + math.erf(margin / math.sqrt(2 * var)))
+        ratios = self.game_ratios() if len(self.game_ratios()) >= 200 else None
+        rng = random.Random(f"{self.today}-{upside}")  # same inputs, same answer
+        sides = []
+        for tid in (team_id, opp_id):
+            sides.append((self.week_projection(self.roster(tid), tid)[1], self._starts(tid, tid == upside)))
+        margins = []
+        sd = POLICY["model_sd_ratio"]
+        for _ in range(sims or POLICY["sims"]):
+            totals = []
+            for done, starts in sides:
+                fut = sum(rate * (rng.choice(ratios) if ratios else rng.lognormvariate(-0.08, 0.4))
+                          for rate, play in starts if rng.random() < play)
+                totals.append(done + fut * max(rng.gauss(1.0, sd), 0.0))
+            margins.append(totals[0] - totals[1])
+        margins.sort()
+        wins = sum(1 for m in margins if m > 0) + 0.5 * sum(1 for m in margins if m == 0)
+        return wins / len(margins), margins
+
+    def win_probability(self, team_id=None, opp_id=None):
+        """Chance team_id outscores opp_id this week (simulated, normal assumptions)."""
+        return self.simulate_week(team_id=team_id, opp_id=opp_id)[0]
 
     # ---- power rankings -------------------------------------------------
     def games_per_week(self):
@@ -392,6 +424,7 @@ class League:
             return self._defense
         today_sp = self.date_sp.get(self.today) or max(sp for sp, d in self.sp_date.items() if d < self.today)
         sums = defaultdict(lambda: [0.0, 0])
+        self._ratios = []
         for sp in range(max(1, today_sp - POLICY["def_window"]), today_sp):
             day = self.sp_date.get(sp)
             for e in espn.game_logs(sp):
@@ -403,7 +436,9 @@ class League:
                 opp = self.opponent.get((e["player"]["proTeamId"], day))
                 if not line or opp is None or not line["stats"].get("40"):  # skip DNPs (0 minutes)
                     continue
-                r = min(fantasy_points(line["stats"], self.scoring) / pl.rate, 3.0)
+                raw = fantasy_points(line["stats"], self.scoring) / pl.rate
+                self._ratios.append(raw)
+                r = min(raw, 3.0)
                 for key in ((opp, None), (opp, pl.pos_group)):
                     sums[key][0] += r
                     sums[key][1] += 1
@@ -413,6 +448,12 @@ class League:
                          for (opp, g), (s, n) in sums.items() if g is not None}
         self._defense.update({(opp, None): f for opp, f in overall.items()})
         return self._defense
+
+    def game_ratios(self):
+        """Single-game FP / player rate for every game played over the look-back window: the real spread of
+        nights (busts, 2x booms) that the week simulation samples from."""
+        self.defense()
+        return self._ratios
 
     def matchup_factor(self, pl, day):
         opp = self.opponent.get((pl.pro_team, day))

@@ -59,11 +59,14 @@ Global flags (before the command): `--fresh` (skip 5-min cache), `--mode aggress
 
 ## Morning report (`nightly`)
 Prints the finished report in markdown; the reader only replaces `{{OVERVIEW}}` with 2-3 sentences.
-- **Outlook** = win chance from the projected margin vs the spread of remaining player-games (40% of each start's
-  expected FP) plus 6% projection error per team: 🔒 Guaranteed W (97%+), 🟢 Strong (80%+), 🟢 Lean W (60%+),
-  🟡 Toss-up, 🟠 Lean L (<40%), 🔴 Weak (<20%), 💀 Loss incoming (<3%).
-- **Matchup grid**: yesterday, today's projection (live points + best lineup for games still to come), week score,
-  week projection with margin.
+- **Win chance** = 4,000 simulations of the rest of the week: every start draws a real single-game swing (that
+  night's FP / player rate, sampled from the last 30 days of games: busts to 2x+ booms), healthy starters miss 5% of
+  games, DTD players play 60%, plus a 6% projection-error factor per team. Outlook: 🟢 Strong (80%+), 🟢 Lean W
+  (60%+), 🟡 Toss-up, 🟠 Lean L (<40%), 🔴 Weak (<20%).
+- **Decided week** (🔒 Guaranteed W / 💀 Loss incoming) needs a stress test, not just a big margin. Win: give the
+  opponent its upside (everyone not OUT plays at his better of rate and form, and it streams up to 2 free agents a day
+  into idle players' spots) and we must still win 99% of simulations. Loss: give *us* that upside (all our best moves)
+  and we must still win no more than 1%. Then the report opens with a DECIDED banner and roster moves say Skip.
 - **Mondays**: separate "Week N final" (🏆/❌) and "Week N+1 preview" sections, plus a set-your-lineups reminder.
 - **Bench alert** (red): shown only when our bench scored while some of the 10 starting slots sat empty; the FP is
   what the best hindsight lineup would have added.
