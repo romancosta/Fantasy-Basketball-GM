@@ -2,6 +2,7 @@
 import argparse
 import datetime as dt
 import sys
+import traceback
 
 from . import espn
 from .config import BENCH, CONFIG, IR, POLICY, SLOT_NAMES
@@ -328,9 +329,19 @@ def main(argv=None):
     sub.add_parser("check")
     p = sub.add_parser("recap"); p.add_argument("--date")
     p = sub.add_parser("nightly"); p.add_argument("--n", type=int, default=3)
+    p = sub.add_parser("watchdog", help="check that last night's state was committed (needs git only)")
+    p.add_argument("--branch", default="nightly-state")
     a = ap.parse_args(argv)
+    if a.cmd == "watchdog":
+        from .watchdog import cmd_watchdog
+        sys.exit(cmd_watchdog(a))
     espn.FRESH = a.fresh
-    lg = League(dt.date.fromisoformat(a.today) if a.today else None)
-    from . import report   # imports this module, so load it lazily
-    cmd = getattr(report, f"cmd_{a.cmd}", None) or globals()[f"cmd_{a.cmd}"]
-    cmd(lg, a)
+    try:
+        lg = League(dt.date.fromisoformat(a.today) if a.today else None)
+        from . import report   # imports this module, so load it lazily
+        cmd = getattr(report, f"cmd_{a.cmd}", None) or globals()[f"cmd_{a.cmd}"]
+        cmd(lg, a)
+    except Exception as exc:   # noqa: BLE001 - one plain error line for the routine, full trace on stderr
+        traceback.print_exc()
+        print(f"FBGM ERROR ({a.cmd}): {type(exc).__name__}: {exc}")
+        sys.exit(1)
