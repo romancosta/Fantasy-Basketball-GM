@@ -106,7 +106,7 @@ Prints the finished report in markdown; the reader only replaces `{{OVERVIEW}}` 
   (slot changes worth `pretip_min_gain` (10) FP tonight, or an IR player ESPN lists as playable), or `PICKUP` (lineup is
   set but an optional add earns points).
   It only alerts when points are actually at stake: a star who is OUT with no bench cover is silent unless a free
-  agent adds 10+ FP tonight AND a flex/idle-bench player can be cut for him (never a starter); at-risk starters are
+  agent adds 10+ FP tonight AND a flex-pool player who isn't starting tonight can be cut for him (core players, idle or injured, are never offered); at-risk starters are
   only listed when someone could cover; tiny reshuffles are ignored. Changes are only possible for games not yet started.
   Scheduled by docs/pretip-routine.md.
 - **Power rankings** (FP/week): results (season pace 60% / last 7 days 40%) weighted days/(days+21) against roster
