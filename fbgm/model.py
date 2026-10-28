@@ -1,7 +1,6 @@
 """League state, player valuation, schedule, and lineup optimization."""
 import contextlib
 import datetime as dt
-import math
 import random
 import re
 from collections import defaultdict

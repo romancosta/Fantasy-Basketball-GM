@@ -4,7 +4,7 @@ import json
 import os
 import re
 
-from .config import CONFIG, IR, POLICY
+from .config import IR, POLICY
 
 STATE_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "state")
 
