@@ -459,7 +459,7 @@ def news_section(lg, me, opp):
                 legs = " · ".join(f"{d:%a} {c:.0%}" for d, c in risky)
                 rest.append(f"- 💤 **{p.name}** ({tag}) back-to-back: chance he sits {legs} "
                             f"(sat {pr['sat1']} first / {pr['sat2']} second legs of {pr['b2b']} healthy B2Bs)")
-            item = next((n for n in lg.news(p) if NEWSY.search(n.get("headline", ""))), None)
+            item = None if ruling else next((n for n in lg.news(p) if NEWSY.search(n.get("headline", ""))), None)
             if item and dt.datetime.fromisoformat(item["published"].replace("Z", "+00:00")) >= cutoff:
                 head = item["headline"]
                 news.append(f"- 📰 **{p.name}** ({tag}): {head if len(head) <= 160 else head[:157] + '...'}")

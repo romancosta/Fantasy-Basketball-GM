@@ -390,11 +390,12 @@ class League:
         return cache[pl.id]
 
     def news(self, pl):
-        """Recent news items for a tracked player (newest first); [] if unavailable."""
+        """Recent Rotowire blurbs about a tracked player (newest first); [] if unavailable. The feed also carries
+        ESPN columns and video tagged with many players, which say nothing specific about him."""
         cache = self.__dict__.setdefault("_news", {})
         if pl.id not in cache:
             try:
-                cache[pl.id] = espn.news(pl.id)
+                cache[pl.id] = [n for n in espn.news(pl.id) if n.get("type") == "Rotowire"]
             except Exception:
                 cache[pl.id] = []
         return cache[pl.id]
@@ -420,12 +421,23 @@ class League:
                 break
         return pl._ruling
 
+    def long_term(self, pl):
+        """Recent injury news points to an absence beyond a game or two (stat-line recaps are ignored)."""
+        items = [n for n in self.news(pl)[:5]
+                 if re.search(r"\([\w\s-]+\)|injur|\bout\b|questionable|doubtful", n.get("headline", ""), re.I)]
+        text = " ".join(f"{n.get('headline', '')} {n.get('story', '')}" for n in items).lower()
+        return bool(re.search(r"timetable|indefinitely|\bweeks?\b|surgery|\bmri\b|extended|re-evaluat|several games|"
+                              r"multiple games|at least (?:a|one|two|three|four|five|\d+) (?:more )?(?:games|weeks)", text))
+
     def apply_rest_rulings(self):
         """A player OUT for one named game sits that day only: active on the others after a rest night,
         day-to-day after an injury ruling."""
         for pid in self.rest_watch():
             pl = self.players[pid]
             ruling = self.game_ruling(pl) if pl.injury in ("OUT", "DOUBTFUL", "QUESTIONABLE", "DAY_TO_DAY") else None
+            if ruling and ruling[1] == "injury" and self.long_term(pl):
+                pl._ruling = None   # "out for Wednesday's game" during a longer absence: keep ESPN's status
+                continue
             if ruling:
                 pl.injury = "ACTIVE" if ruling[1] == "rest" else "DAY_TO_DAY"
 
