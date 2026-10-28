@@ -93,6 +93,12 @@ Prints the finished report in markdown; the reader only replaces `{{OVERVIEW}}` 
   target date, first game and which flex player to clear. `state/ir_watch.json` remembers the last estimate. **Change alert** (any distance out): if the estimate moves
   `ir_shift_days` (3) or more, either way, it shows ⚠️ PUSHED BACK / MOVED UP with old vs new date; if a previously
   announced timeline disappears (setback, season-ending news) it shows 🚨.
+- **Run health** (`fbgm/health.py`): a failure in one report section is contained (the section prints "Unavailable this
+  run" and the rest goes out). Data problems - failed news/game-log/schedule/transaction fetches, an unreadable state
+  file, a missing snapshot, a tiny player pool, no scoring period for today, a date-mapping mismatch, a scoring
+  mismatch - add a "⚠️ data issues" banner under the outlook line and a closing **Health** section. An empty roster or
+  missing opponent stops the run with a final `FBGM ERROR (...)` line. `python3 -m fbgm watchdog` (git only) checks the
+  `nightly-state` branch for today's `nightly state` commit; run it from a separate routine (docs/watchdog-routine.md).
 - **Power rankings** (FP/week): results (season pace 60% / last 7 days 40%) weighted days/(days+21) against roster
   strength (current roster on current form x league games per week), plus 25 FP per game over .500. Arrows compare
   with the ranking as of yesterday (same rosters, one day less of results).

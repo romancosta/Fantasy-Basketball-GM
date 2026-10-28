@@ -137,5 +137,16 @@ class IrStatus(Fixture):
         self.assertEqual(self.run_ir([news("Nur out about two weeks.")], slot=0), [])
 
 
+class CorruptState(Fixture):
+    def test_unreadable_file_warns_and_reads_as_missing(self):
+        from fbgm import health
+        health.reset()
+        self.addCleanup(health.reset)
+        with open(f"{self.tmp}/snapshot-2026-10-28.json", "w") as f:
+            f.write("{not json")
+        self.assertIsNone(tracking.load_snapshot(D(2026, 10, 28)))
+        self.assertIn("snapshot-2026-10-28.json is unreadable", health.render())
+
+
 if __name__ == "__main__":
     unittest.main()
