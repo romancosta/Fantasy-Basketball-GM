@@ -108,8 +108,8 @@ def _estimate(item):
 
 def ir_status(lg):
     """For each of our IR players with a usable timeline: dict with name, est return date, first game, headline.
-    Nothing is returned for players with no timeline, season-ending news, or a return still far off (those are
-    only recorded in state so the first sighting of a timeline can be announced once)."""
+    Returned: a return within the window, a timeline's first sighting, any shift of the estimate by ir_shift_days+
+    (pushed back or moved up, even far out), or a previously announced timeline that has disappeared."""
     window = dt.timedelta(days=POLICY["ir_window_days"])
     seen = _load("ir_watch.json") or {}
     out, new_seen = [], {}
@@ -129,26 +129,38 @@ def ir_status(lg):
                 break
         # ESPN has already upgraded him from OUT while he still sits on IR: he is close.
         upgraded = pl.injury not in ("OUT", "INJURY_RESERVE", "SUSPENSION")
+        prev = seen.get(str(pl.id), {})
+        prev_est = dt.date.fromisoformat(prev["est"]) if prev.get("est") else None
+        lost = None
         if not est or est.get("season"):
             if upgraded:
                 est = {"est": lg.today, "kind": "status", "soon": True, "headline": f"ESPN status now {pl.injury}",
                        "published": lg.today}
             else:
-                new_seen[str(pl.id)] = {"name": pl.name, "est": None}
+                # No usable timeline now. If we had announced one, that is itself news (setback / season-ending).
+                head = items[0] if items else None
+                if prev_est and head:
+                    lost = {"season": bool(est and est.get("season")), "headline": head["headline"],
+                            "published": _published(head)}
+                    out.append({"player": pl, "est": None, "kind": None, "first": None, "near": False,
+                                "headline": lost["headline"], "published": lost["published"], "upgraded": False,
+                                "days": None, "prev": prev_est, "shift": None, "lost": lost})
+                new_seen[str(pl.id)] = {"name": pl.name, "est": str(prev_est) if prev_est else None,
+                                        "lost": bool(lost) or prev.get("lost", False)}
                 continue
         target = est["est"] or lg.today
         if upgraded:
             target = min(target, lg.today)
         target = max(target, lg.today) if (est["soon"] and not est["est"]) else target
         first = next((d for d in sorted(lg.games[pl.pro_team]) if d >= max(target, lg.today)), None)
-        prev = seen.get(str(pl.id), {})
-        prev_est = dt.date.fromisoformat(prev["est"]) if prev.get("est") else None
         new_seen[str(pl.id)] = {"name": pl.name, "est": str(target)}
         near = target - lg.today <= window
-        fresh = prev_est is None or abs((target - prev_est).days) > 3
-        if near or fresh:
+        shift = (target - prev_est).days if prev_est else None
+        moved = shift is not None and abs(shift) >= POLICY["ir_shift_days"]
+        if near or prev_est is None or moved:
             out.append({"player": pl, "est": target, "kind": est["kind"] or "about", "first": first, "near": near,
                         "headline": est["headline"], "published": est["published"], "upgraded": upgraded,
-                        "days": (target - lg.today).days})
+                        "days": (target - lg.today).days, "prev": prev_est, "shift": shift if moved else None,
+                        "lost": None})
     _save("ir_watch.json", new_seen)
     return out

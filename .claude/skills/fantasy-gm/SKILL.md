@@ -90,7 +90,9 @@ Prints the finished report in markdown; the reader only replaces `{{OVERVIEW}}` 
 - **IR watch**: reads Rotowire news for players in our IR slot every run (return timelines like "at least four weeks",
   "mid-December", ESPN status upgrades). Silent while there is no timeline or a return is far off. A timeline's first
   appearance is announced once (re-announced if it moves 3+ days); from `ir_window_days` (14) out, every report shows the
-  target date, first game and which flex player to clear. `state/ir_watch.json` remembers what was announced.
+  target date, first game and which flex player to clear. `state/ir_watch.json` remembers the last estimate. **Change alert** (any distance out): if the estimate moves
+  `ir_shift_days` (3) or more, either way, it shows ⚠️ PUSHED BACK / MOVED UP with old vs new date; if a previously
+  announced timeline disappears (setback, season-ending news) it shows 🚨.
 - **Power rankings** (FP/week): results (season pace 60% / last 7 days 40%) weighted days/(days+21) against roster
   strength (current roster on current form x league games per week), plus 25 FP per game over .500. Arrows compare
   with the ranking as of yesterday (same rosters, one day less of results).

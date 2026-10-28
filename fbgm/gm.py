@@ -544,6 +544,11 @@ def ir_section(lg):
     print("\n## IR watch")
     for it in items:
         pl = it["player"]
+        if it["lost"]:
+            what = ("season-ending news" if it["lost"]["season"] else "no return timeline anymore")
+            print(f"- 🚨 **{pl.name}**: previously expected back ~{it['prev']:%b %-d}, now {what}.\n"
+                  f"  - Latest: {it['headline'][:200]} ({it['published']:%b %-d})")
+            continue
         first = f"{it['first']:%a %b %-d}" if it["first"] else "no scheduled game left"
         if it["upgraded"]:
             when = f"ESPN status is now {pl.injury}: activate-ready"
@@ -552,6 +557,10 @@ def ir_section(lg):
         else:
             when = f"timeline set: {it['kind']} {it['est']:%b %-d} ({it['days']}d out), nothing to do yet"
         line = f"- 🩹 **{pl.name}** (rate {pl.rate:.1f}): {when} · first game **{first}**"
+        if it["shift"]:
+            s_ = it["shift"]
+            line = (f"- ⚠️ **{pl.name}** (rate {pl.rate:.1f}): return {'PUSHED BACK' if s_ > 0 else 'MOVED UP'} "
+                    f"{abs(s_)}d, from {it['prev']:%b %-d} to {it['est']:%b %-d} ({it['days']}d out) · first game **{first}**")
         if it["near"]:
             spot = f" Likely spot to clear: {flex[0].name} (rate {flex[0].rate:.1f})." if flex else ""
             line += f"\n  - Move him off IR before tip-off; the roster needs an open spot.{spot}"

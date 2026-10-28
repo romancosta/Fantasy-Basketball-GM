@@ -90,6 +90,8 @@ POLICY = {
     "news_hours": 30,
     # IR players are mentioned in the report only once a return is within this many days (or a timeline first appears).
     "ir_window_days": 14,
+    # ...and whenever a known return estimate moves by this many days or more (either direction), however far out.
+    "ir_shift_days": 3,
     "decided_win": 0.99,
     "decided_loss": 0.01,
 }
