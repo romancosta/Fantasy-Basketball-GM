@@ -3,6 +3,9 @@
 Notable changes to the nightly report and tooling. Newest first.
 
 ## Unreleased
+- Monitoring (M1): section failures are contained; silent data failures are counted; data checks; health banner and
+  Health section; `fbgm watchdog` and a watchdog routine; `FBGM ERROR` line on fatal failures; nightly routine persists
+  state before replying.
 - Foundations (M0): report code split into `fbgm/report.py` and `fbgm/fmt.py`; unit test suite under `tests/`; CI (lint +
   tests) on PRs; `tools/golden_nightly.py` for before/after report comparisons.
 
