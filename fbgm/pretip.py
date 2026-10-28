@@ -74,18 +74,18 @@ def risky_starters(lg, day, full):
 
 
 def drop_candidate(lg, day, full, exclude):
-    """Who we could cut for a pickup without hurting tonight or the core: a flex-pool player or a bench player with
-    no game tonight - never a player holding a starting slot (even an injured one). Lowest rest-of-season rate first; None if no such player."""
-    idle_bench = [p for p in lg.roster() if p.lineup_slot == BENCH and not lg.plays(p, day)]
+    """Who we'd let go for a pickup under the GM policy: a flex-pool player (recent add, or the lowest-rated player when
+    there are none) who isn't holding a starting slot tonight. Core players are never offered, even idle ones on the
+    bench. Lowest rest-of-season rate first; None if the flex pool has no such player."""
     starting = {p for p, s in full.items() if s not in (BENCH, IR)}   # incl. an injured core player holding a slot
-    pool = {p for p in lg.flex_pool() + idle_bench if p not in exclude | starting and p.lineup_slot != IR}
+    pool = [p for p in lg.flex_pool() if p not in exclude | starting and p.lineup_slot != IR]
     return min(pool, key=lambda p: p.rate) if pool else None
 
 
 def dead_slots(lg, day, full):
     """[(player, slot, free agent, who to drop, FP the pickup adds tonight)] for starters in the best lineup who can't
     play tonight (OUT, or ruled out for the game) with nobody on the bench to cover. Reported only when a free
-    agent with an unlocked game would add at least pretip_min_gain FP AND we have someone we'd really let go;
+    agent with an unlocked game would add at least pretip_min_gain FP AND the flex pool has someone to let go;
     otherwise there is nothing worth doing (a star sitting out isn't a drop/add), so no alert."""
     out = []
     pool = sorted((p for p in lg.free_agents if p.status == "FREEAGENT" and lg.plays(p, day) and not lg.locked(p, day)
