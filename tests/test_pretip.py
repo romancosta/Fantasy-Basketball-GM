@@ -76,7 +76,7 @@ class Pretip(unittest.TestCase):
                      games={1: {TODAY: EARLY}, 2: {TODAY: LATE}, 3: {}})
         # The idle bench player is a legitimate drop, so this one does alert (see the next test for the cost side).
         status, lines = pretip.pretip(lg)
-        self.assertEqual(status, "ACTION")
+        self.assertEqual(status, "PICKUP")
         self.assertIn("Optional pickup: Star (PG) is OUT with no bench cover. +Streamer / -Wing", "\n".join(lines))
 
     def test_small_pickup_gain_is_not_worth_an_alert(self):

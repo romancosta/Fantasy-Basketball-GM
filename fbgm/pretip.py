@@ -111,7 +111,7 @@ def returning_from_ir(lg, day):
 
 def pretip(lg):
     """(status, lines). status: 'OK' (nothing to do), 'WATCH' (no change needed, but a starter may sit), 'ACTION'
-    (change your lineup now), 'NONE' (no unlocked games today)."""
+    (change your lineup now), 'PICKUP' (lineup is set; an optional add would earn points), 'NONE' (no unlocked games today)."""
     day = lg.today
     unlocked = [pl for pl in lg.roster() if pl.lineup_slot != IR and lg.plays(pl, day) and not lg.locked(pl, day)]
     if not unlocked:
@@ -143,14 +143,15 @@ def pretip(lg):
         lines.append("Starters who might not play (check status before their tip):")
         for pl, slot, notes in sorted(risks, key=lambda r: lg.game_start(r[0], day)):
             lines.append(f"  - {pl.name} ({SLOT_NAMES[slot]}, {tip_str(lg, pl, day)}): " + "; ".join(notes) + inj(pl))
-    status = "ACTION" if (moves or ir_ready or dead) else "WATCH" if risks else "OK"
+    status = "ACTION" if (moves or ir_ready) else "PICKUP" if dead else "WATCH" if risks else "OK"
     return status, [head] + lines if lines else [head]
 
 
 def cmd_pretip(lg, a):
     status, lines = pretip(lg)
     label = {"OK": "PRETIP OK: nothing to change", "WATCH": "PRETIP WATCH: lineup is set, some starters are at risk",
-             "ACTION": "PRETIP ACTION: change your lineup", "NONE": "PRETIP OK"}[status]
+             "ACTION": "PRETIP ACTION: change your lineup",
+             "PICKUP": "PRETIP PICKUP: optional add, lineup itself is set", "NONE": "PRETIP OK"}[status]
     print(f"{label} · {lg.now:%a %m/%d %-I:%M %p} ET")
     for ln in lines:
         print(ln)
