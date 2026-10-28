@@ -20,7 +20,7 @@ class P:
         self.id, self.name, self.slots, self.lineup_slot = P._ids, name, set(slots), slot
         self.injury, self.pro_team, self.status = injury, team, status
         self.expected = fp * AVAILABILITY[injury]
-        self.form, self.gp, self.ir_eligible = fp, 20, True
+        self.form, self.gp, self.ir_eligible, self.rate = fp, 20, True, fp
 
     @property
     def availability(self):
@@ -36,6 +36,7 @@ def make_lg(players, free_agents=(), games=None, now=NOW):
     lg.roster = lambda team_id=None: lg.rosters[31]
     lg.free_agents = list(free_agents)
     lg._rest_watch = set()
+    lg._recent_adds = {}      # no recent adds: the flex pool falls back to the lowest-rated player
     lg._news = {p.id: [] for p in list(players) + list(free_agents)}
     return lg
 
@@ -62,18 +63,38 @@ class Pretip(unittest.TestCase):
                      games={1: {TODAY: EARLY}, 3: {}})
         self.assertEqual(pretip.pretip(lg)[0], "OK")
 
-    def test_dead_slot_names_a_free_agent(self):
-        out = P("Hurt Big", {1}, 1, injury="OUT")
-        fa = P("Streamer", {1}, None, 35, status="FREEAGENT")
-        wrong = P("Wrong Slot", {0}, None, 60, status="FREEAGENT")
-        lg = make_lg([P("Guard", {0}, 0), out], free_agents=[wrong, fa])
+    def test_star_out_with_no_cover_and_nobody_to_drop_is_silent(self):
+        # Two players active tonight, one is a star who is now OUT. Nothing on the bench, nobody we would cut.
+        star = P("Star", {0}, 0, 65, injury="OUT")
+        fa = P("Streamer", {0}, None, 35, status="FREEAGENT")
+        lg = make_lg([star, P("Big", {1}, 1, 50)], free_agents=[fa])
+        self.assertEqual(pretip.pretip(lg)[0], "OK")
+
+    def test_star_out_does_not_alert_even_with_a_pickup_if_the_only_drop_is_a_starter(self):
+        lg = make_lg([P("Star", {0}, 0, 65, injury="OUT"), P("Big", {1}, 1), P("Wing", {0, 1}, BENCH, 30, team=3)],
+                     free_agents=[P("Streamer", {0}, None, 35, status="FREEAGENT")],
+                     games={1: {TODAY: EARLY}, 2: {TODAY: LATE}, 3: {}})
+        # The idle bench player is a legitimate drop, so this one does alert (see the next test for the cost side).
         status, lines = pretip.pretip(lg)
         self.assertEqual(status, "ACTION")
-        self.assertIn("Empty slot: Hurt Big", "\n".join(lines))
-        self.assertIn("Best free agent for the slot: Streamer", "\n".join(lines))
+        self.assertIn("Optional pickup: Star (PG) is OUT with no bench cover. +Streamer / -Wing", "\n".join(lines))
 
-    def test_questionable_starter_is_a_watch_not_an_action(self):
+    def test_small_pickup_gain_is_not_worth_an_alert(self):
+        lg = make_lg([P("Star", {0}, 0, 65, injury="OUT"), P("Big", {1}, 1), P("Wing", {0, 1}, BENCH, 30, team=3)],
+                     free_agents=[P("Scrub", {0}, None, 6, status="FREEAGENT")],
+                     games={1: {TODAY: EARLY}, 2: {TODAY: LATE}, 3: {}})
+        self.assertEqual(pretip.pretip(lg)[0], "OK")
+
+    def test_tiny_reshuffle_is_not_an_alert(self):
+        lg = make_lg([P("Guard", {0}, BENCH, 41), P("Other", {0}, 0, 40), P("Big", {1}, 1)])
+        self.assertEqual(pretip.pretip(lg)[0], "OK")
+
+    def test_questionable_starter_without_cover_is_not_listed(self):
         lg = make_lg([P("Guard", {0}, 0, injury="DAY_TO_DAY"), P("Big", {1}, 1)])
+        self.assertEqual(pretip.pretip(lg)[0], "OK")
+
+    def test_questionable_starter_with_cover_is_a_watch_not_an_action(self):
+        lg = make_lg([P("Guard", {0}, 0, injury="DAY_TO_DAY"), P("Big", {1}, 1), P("Cover", {0}, BENCH, 15)])
         status, lines = pretip.pretip(lg)
         self.assertEqual(status, "WATCH")
         self.assertIn("Guard (PG, 7:00 PM)", "\n".join(lines))

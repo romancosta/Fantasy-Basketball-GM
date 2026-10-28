@@ -47,10 +47,15 @@ def lineup_changes(lg, day):
 
 
 def risky_starters(lg, day, full):
-    """Starters (in the best lineup) who could still not play: not fully healthy, or a likely rest night."""
+    """Starters (in the best lineup) who could still not play: not fully healthy, or a likely rest night. Only
+    listed when a bench player with an unlocked game could take his slot - with no cover there is nothing to decide."""
     out = []
+    bench = [p for p in full if full[p] == BENCH and lg.plays(p, day) and not lg.locked(p, day)
+             and day_value(lg, p, day) > 0]
     for pl, slot in full.items():
         if slot in (BENCH, IR) or not lg.plays(pl, day) or lg.locked(pl, day) or day_value(lg, pl, day) <= 0:
+            continue
+        if not any(slot in b.slots for b in bench):
             continue
         notes = []
         if pl.availability < 1:
@@ -68,17 +73,33 @@ def risky_starters(lg, day, full):
     return out
 
 
+def drop_candidate(lg, day, full, exclude):
+    """Who we could cut for a pickup without hurting tonight or the core: a flex-pool player or a bench player with
+    no game tonight - never someone starting tonight. Lowest rest-of-season rate first; None if no such player."""
+    idle_bench = [p for p in lg.roster() if p.lineup_slot == BENCH and not lg.plays(p, day)]
+    starting = {p for p, s in full.items() if s not in (BENCH, IR) and day_value(lg, p, day) > 0}
+    pool = {p for p in lg.flex_pool() + idle_bench if p not in exclude | starting and p.lineup_slot != IR}
+    return min(pool, key=lambda p: p.rate) if pool else None
+
+
 def dead_slots(lg, day, full):
-    """[(player, slot, best free agent or None)]: starters in the best lineup who still can't give us anything today
-    (OUT, or ruled out for tonight's game) and have nobody on the bench to replace them. The free agent is the best
-    available pickup with an unlocked game who fits that slot."""
+    """[(player, slot, free agent, who to drop, FP the pickup adds tonight)] for starters in the best lineup who can't
+    play tonight (OUT, or ruled out for the game) with nobody on the bench to cover. Reported only when a free
+    agent with an unlocked game would add at least pretip_min_gain FP AND we have someone we'd really let go;
+    otherwise there is nothing worth doing (a star sitting out isn't a drop/add), so no alert."""
     out = []
     pool = sorted((p for p in lg.free_agents if p.status == "FREEAGENT" and lg.plays(p, day) and not lg.locked(p, day)
                    and p.availability >= POLICY["add_min_availability"] and p.gp > 0), key=lambda p: -p.form)
+    taken = set()
     for pl, slot in full.items():
         if slot in (BENCH, IR) or not lg.plays(pl, day) or lg.locked(pl, day) or day_value(lg, pl, day) > 0:
             continue
-        out.append((pl, slot, next((p for p in pool if slot in p.slots), None)))
+        fa = next((p for p in pool if slot in p.slots and p not in taken), None)
+        gain = day_value(lg, fa, day) if fa else 0.0
+        drop = drop_candidate(lg, day, full, exclude={pl})
+        if fa and drop and gain >= POLICY["pretip_min_gain"]:
+            taken.add(fa)
+            out.append((pl, slot, fa, drop, gain))
     return out
 
 
@@ -97,6 +118,9 @@ def pretip(lg):
         return "NONE", ["no unlocked games left for your roster today"]
     first = min(lg.game_start(pl, day) for pl in unlocked)
     moves, gain, full = lineup_changes(lg, day)
+    if gain < POLICY["pretip_min_gain"]:
+        # Reshuffling for a few FP isn't worth an alert: judge the lineup as it stands now.
+        moves, full = [], {pl: pl.lineup_slot for pl in lg.roster()}
     ir_ready = returning_from_ir(lg, day)
     risks = risky_starters(lg, day, full)
     dead = dead_slots(lg, day, full)
@@ -108,11 +132,10 @@ def pretip(lg):
             why = "" if to != BENCH else f" ({'OUT' if pl.availability == 0 else 'no usable game'} today)"
             lines.append(f"  - {pl.name}: {SLOT_NAMES.get(frm, '?')} -> {SLOT_NAMES[to]}"
                          f"{why}{'' if to == BENCH else f' · {tip_str(lg, pl, day)} · proj {day_value(lg, pl, day):.0f}'}")
-    for pl, slot, fa in dead:
+    for pl, slot, fa, drop, add in dead:
         why = "ruled out for tonight" if lg.rest_chance(pl, day) >= 1 else "OUT"
-        pick = (f" Best free agent for the slot: {fa.name} (form {fa.form:.1f}, {tip_str(lg, fa, day)}{inj(fa)})."
-                if fa else " No suitable free agent with a game today.")
-        lines.append(f"Empty slot: {pl.name} ({SLOT_NAMES[slot]}) is {why} and nobody on your bench can take it.{pick}")
+        lines.append(f"Optional pickup: {pl.name} ({SLOT_NAMES[slot]}) is {why} with no bench cover. +{fa.name} / "
+                     f"-{drop.name} adds about {add:.0f} FP tonight (form {fa.form:.1f}, {tip_str(lg, fa, day)}{inj(fa)}).")
     for pl in ir_ready:
         lines.append(f"Move {pl.name} off IR: ESPN lists him {pl.injury.replace('_', '-').title()} and he plays today "
                      f"({tip_str(lg, pl, day)}); needs an open roster spot.")

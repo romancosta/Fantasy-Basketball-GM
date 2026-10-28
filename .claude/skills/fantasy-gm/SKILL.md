@@ -102,8 +102,11 @@ Prints the finished report in markdown; the reader only replaces `{{OVERVIEW}}` 
   `nightly-state` branch for today's `nightly state` commit; run it from a separate routine (docs/watchdog-routine.md).
 - **Pre-tip check** (`pretip`, `fbgm/pretip.py`): uses each player's expected FP *for tonight* (rate x availability x
   chance he sits, with one-game rulings from news counted as OUT tonight), keeps locked players where they are, and reports
-  `PRETIP OK` (nothing to do), `WATCH` (set, but some starters might sit), or `ACTION` (slot changes, an empty slot with
-  the best free agent to fill it, or an IR player ESPN lists as playable). Changes are only possible for games not yet started.
+  `PRETIP OK` (nothing to do), `WATCH` (set, but a starter might sit and a bench player could cover him), or `ACTION`
+  (slot changes worth `pretip_min_gain` (10) FP tonight, an optional pickup, or an IR player ESPN lists as playable).
+  It only alerts when points are actually at stake: a star who is OUT with no bench cover is silent unless a free
+  agent adds 10+ FP tonight AND a flex/idle-bench player can be cut for him (never a starter); at-risk starters are
+  only listed when someone could cover; tiny reshuffles are ignored. Changes are only possible for games not yet started.
   Scheduled by docs/pretip-routine.md.
 - **Power rankings** (FP/week): results (season pace 60% / last 7 days 40%) weighted days/(days+21) against roster
   strength (current roster on current form x league games per week), plus 25 FP per game over .500. Arrows compare
