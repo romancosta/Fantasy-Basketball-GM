@@ -124,5 +124,48 @@ class Pretip(unittest.TestCase):
         self.assertEqual(pretip.pretip(lg)[0], "NONE")
 
 
+class TwoBigsOut(unittest.TestCase):
+    """Two core bigs ruled out on one night (slot 4 = C, slot 9 = PF/C)."""
+
+    def setUp(self):
+        P._ids = 0
+        self.orig = pretip.dead_slots.__globals__["SLOT_NAMES"]
+
+    def lg(self, bench, fas):
+        import fbgm.model as model
+        lg = make_lg([P("Guard", {0}, 0, 50), P("Zubac", {4, 9}, 4, 45, injury="OUT"),
+                      P("Duren", {4, 9}, 9, 53, injury="OUT")] + bench, free_agents=fas,
+                     games={1: {TODAY: EARLY}, 2: {TODAY: LATE}, 3: {}})
+        lg.slots = [0, 4, 9]
+        self.assertIs(model.League.full_lineup, type(lg).full_lineup)
+        return lg
+
+    def test_bench_cover_fills_one_slot_and_pickup_fills_the_other_with_a_different_drop(self):
+        lg = self.lg([P("Bench Big", {4, 9}, BENCH, 30), P("Idle A", {0}, BENCH, 20, team=3),
+                      P("Idle B", {0}, BENCH, 25, team=3)],
+                     [P("FA One", {4, 9}, None, 35, status="FREEAGENT")])
+        status, lines = pretip.pretip(lg)
+        text = "\n".join(lines)
+        self.assertEqual(status, "ACTION")           # the bench big moving in is a real lineup change
+        self.assertIn("Bench Big: BE ->", text)
+        self.assertIn("+FA One / -Idle A", text)
+
+    def test_two_pickups_never_cut_the_same_player(self):
+        lg = self.lg([P("Idle A", {0}, BENCH, 20, team=3), P("Idle B", {0}, BENCH, 25, team=3)],
+                     [P("FA One", {4, 9}, None, 35, status="FREEAGENT"), P("FA Two", {4, 9}, None, 33, status="FREEAGENT")])
+        status, lines = pretip.pretip(lg)
+        picks = [ln for ln in lines if ln.startswith("Optional pickup")]
+        self.assertEqual(status, "PICKUP")
+        self.assertEqual(len(picks), 2)
+        drops = {ln.split("-")[1].split(" adds")[0] for ln in picks}
+        self.assertEqual(len(drops), 2)
+        adds = {ln.split("+")[1].split(" /")[0] for ln in picks}
+        self.assertEqual(adds, {"FA One", "FA Two"})
+
+    def test_no_idle_bench_means_no_pickup(self):
+        lg = self.lg([], [P("FA One", {4, 9}, None, 35, status="FREEAGENT")])
+        self.assertEqual(pretip.pretip(lg)[0], "OK")
+
+
 if __name__ == "__main__":
     unittest.main()

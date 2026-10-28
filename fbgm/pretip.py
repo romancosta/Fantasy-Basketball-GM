@@ -75,9 +75,9 @@ def risky_starters(lg, day, full):
 
 def drop_candidate(lg, day, full, exclude):
     """Who we could cut for a pickup without hurting tonight or the core: a flex-pool player or a bench player with
-    no game tonight - never someone starting tonight. Lowest rest-of-season rate first; None if no such player."""
+    no game tonight - never a player holding a starting slot (even an injured one). Lowest rest-of-season rate first; None if no such player."""
     idle_bench = [p for p in lg.roster() if p.lineup_slot == BENCH and not lg.plays(p, day)]
-    starting = {p for p, s in full.items() if s not in (BENCH, IR) and day_value(lg, p, day) > 0}
+    starting = {p for p, s in full.items() if s not in (BENCH, IR)}   # incl. an injured core player holding a slot
     pool = {p for p in lg.flex_pool() + idle_bench if p not in exclude | starting and p.lineup_slot != IR}
     return min(pool, key=lambda p: p.rate) if pool else None
 
@@ -90,15 +90,16 @@ def dead_slots(lg, day, full):
     out = []
     pool = sorted((p for p in lg.free_agents if p.status == "FREEAGENT" and lg.plays(p, day) and not lg.locked(p, day)
                    and p.availability >= POLICY["add_min_availability"] and p.gp > 0), key=lambda p: -p.form)
-    taken = set()
+    taken, dropped = set(), set()
     for pl, slot in full.items():
         if slot in (BENCH, IR) or not lg.plays(pl, day) or lg.locked(pl, day) or day_value(lg, pl, day) > 0:
             continue
         fa = next((p for p in pool if slot in p.slots and p not in taken), None)
         gain = day_value(lg, fa, day) if fa else 0.0
-        drop = drop_candidate(lg, day, full, exclude={pl})
+        drop = drop_candidate(lg, day, full, exclude={pl} | dropped)
         if fa and drop and gain >= POLICY["pretip_min_gain"]:
             taken.add(fa)
+            dropped.add(drop)
             out.append((pl, slot, fa, drop, gain))
     return out
 
