@@ -4,7 +4,7 @@ import datetime as dt
 import re
 import sys
 
-from . import espn
+from . import espn, tracking
 from .config import BENCH, CONFIG, DECIDED_LABEL, IR, OUTLOOK, POLICY, SLOT_NAMES
 from .model import ET, League, fantasy_points, hungarian_max
 
@@ -470,6 +470,95 @@ def news_section(lg, me, opp):
         print("- Rest odds are already in the projections; check news before lock on those nights.")
 
 
+def delta(x):
+    return f"{x:+,.0f}"
+
+
+def vs_projection(lg, rec, snap, me, opp):
+    """Last night's projected vs actual. snap: the morning snapshot for that day (None -> rebuilt from today's data)."""
+    day = rec["day"]
+    rebuilt = snap is None
+    teams = {}
+    for side in rec["sides"]:
+        tid = side["tid"]
+        if rebuilt:
+            tot, lineup = lg.day_projection(lg.roster(tid), day)
+            players = {pl.name: {"proj": round(pl.expected * lg.rest_factor(pl, day), 1), "lineup": True}
+                       for pl in lineup}
+            teams[tid] = {"day": tot, "week": None, "players": players}
+        else:
+            teams[tid] = {**snap["teams"][str(tid)]}
+    print(f"\n## {day:%a} projected vs actual" + (" (rebuilt from current rosters; no snapshot saved)" if rebuilt else ""))
+    rows = []
+    for side in rec["sides"]:
+        t = teams[side["tid"]]
+        rows.append([lg.team_names[side["tid"]], f"{t['day']:,.0f}", f"{side['day_pts']:,.0f}",
+                     f"**{delta(side['day_pts'] - t['day'])}**"])
+    table(["Team", "Projected", "Actual", "Δ"], rows)
+    # Biggest player misses on our side: lineup players vs what the snapshot expected (DNP counts as 0).
+    ours = {p[1]: p[2] for p in rec["sides"][0]["players"] if p[0] not in (BENCH, IR)}
+    diffs = [(ours.get(n, 0.0) - v["proj"], n, v["proj"], ours.get(n, 0.0))
+             for n, v in teams[me]["players"].items() if v["lineup"]]
+    diffs.sort()
+    def fmt(d):
+        return f"{short_name(d[1])} {d[3]:.0f} vs {d[2]:.0f} proj ({delta(d[0])}{', DNP' if d[1] not in ours else ''})"
+    under = [d for d in diffs if d[0] <= -8][:3]
+    over = [d for d in reversed(diffs) if d[0] >= 8][:3]
+    if under or over:
+        print("\n" + " · ".join(x for x in (
+            "**Under** " + ", ".join(fmt(d) for d in under) if under else "",
+            "**Over** " + ", ".join(fmt(d) for d in over) if over else "") if x))
+    return teams
+
+
+def week_delta(lg, rec, snap, teams_proj, p_now, me, opp):
+    """Week total projection and win chance: yesterday morning's vs now (or vs the final score on Mondays)."""
+    if snap is None or snap["period"] != rec["period"]:
+        return
+    final = rec["final"]
+    print(f"\n## Week {rec['period']} {'result' if final else 'projection'}: {snap['date']} morning vs " +
+          ("final" if final else "now"))
+    rows = []
+    for i, side in enumerate(rec["sides"]):
+        tid = side["tid"]
+        t = snap["teams"][str(tid)]
+        now = side["total"] if final else teams_proj[tid][0]
+        miss = side["day_pts"] - t["day"]
+        rest = (now - t["week"]) - miss
+        why = "" if final else f"{delta(miss)} last night, {delta(rest)} rest of week"
+        rows.append([lg.team_names[tid], f"{t['week']:,.0f}", f"{now:,.0f}", f"**{delta(now - t['week'])}**", why])
+    table(["Team", "Yesterday proj", "Final" if final else "Today proj", "Δ", "From"], rows)
+    if not final:
+        before = snap["win_prob"]
+        print(f"\n**Win chance** {before:.0%} → {p_now:.0%} ({p_now - before:+.0%}) · margin "
+              f"{delta(snap['teams'][str(me)]['week'] - snap['teams'][str(opp)]['week'])} → "
+              f"{delta(teams_proj[me][0] - teams_proj[opp][0])}")
+
+
+def ir_section(lg):
+    """Our IR players, only when a return is near or a timeline first shows up."""
+    items = tracking.ir_status(lg)
+    if not items:
+        return
+    flex = lg.flex_pool()
+    print("\n## IR watch")
+    for it in items:
+        pl = it["player"]
+        first = f"{it['first']:%a %b %-d}" if it["first"] else "no scheduled game left"
+        if it["upgraded"]:
+            when = f"ESPN status is now {pl.injury}: activate-ready"
+        elif it["near"]:
+            when = f"target return {it['kind']} {it['est']:%b %-d} ({it['days']}d)" if it["days"] > 0 else "return is here"
+        else:
+            when = f"timeline set: {it['kind']} {it['est']:%b %-d} ({it['days']}d out), nothing to do yet"
+        line = f"- 🩹 **{pl.name}** (rate {pl.rate:.1f}): {when} · first game **{first}**"
+        if it["near"]:
+            spot = f" Likely spot to clear: {flex[0].name} (rate {flex[0].rate:.1f})." if flex else ""
+            line += f"\n  - Move him off IR before tip-off; the roster needs an open spot.{spot}"
+        line += f"\n  - Latest: {it['headline'][:200]} ({it['published']:%b %-d})"
+        print(line)
+
+
 def cmd_nightly(lg, a):
     """Morning report in markdown: overview + outlook, matchup grid (Mondays: last week's final and the
     new week's preview), roster moves, power rankings. {{OVERVIEW}} is for the reader to fill in."""
@@ -504,6 +593,9 @@ def cmd_nightly(lg, a):
         alert = bench_alert(lg, rec)
         if alert:
             print("\n" + alert)
+        snap = tracking.load_snapshot(rec["day"])
+        vs_projection(lg, rec, snap, me, opp)
+        week_delta(lg, rec, snap, proj, p, me, opp)
         print(f"\n## Week {lg.matchup_period} preview · vs {names[1]}")
         cells = scored([proj[me][0], proj[opp][0]])
         table(["Team", tday, "Proj (margin)"],
@@ -521,7 +613,11 @@ def cmd_nightly(lg, a):
             alert = bench_alert(lg, rec)
             if alert:
                 print("\n" + alert)
+            snap = tracking.load_snapshot(rec["day"])
+            vs_projection(lg, rec, snap, me, opp)
+            week_delta(lg, rec, snap, proj, p, me, opp)
 
+    ir_section(lg)
     news_section(lg, me, opp)
 
     print("\n## Roster moves")
@@ -543,6 +639,8 @@ def cmd_nightly(lg, a):
         print("  - Backups: " + ", ".join(f"+{r[2].name} ({r[0]:+.0f})" for r in alts))
     if plan:
         print("- ↻ Update your lineups after making these moves.")
+
+    tracking.save_snapshot(lg, proj, today, p, (me, opp))
 
     print("\n## Power rankings")
     now = lg.power_rankings()

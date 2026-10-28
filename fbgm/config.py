@@ -88,6 +88,8 @@ POLICY = {
     # Report flags a coming leg at or above this chance to sit, and news from the last news_hours.
     "rest_flag": 0.15,
     "news_hours": 30,
+    # IR players are mentioned in the report only once a return is within this many days (or a timeline first appears).
+    "ir_window_days": 14,
     "decided_win": 0.99,
     "decided_loss": 0.01,
 }

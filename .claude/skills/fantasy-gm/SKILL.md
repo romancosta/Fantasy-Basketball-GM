@@ -81,6 +81,16 @@ Prints the finished report in markdown; the reader only replaces `{{OVERVIEW}}` 
 - **Mondays**: separate "Week N final" (🏆/❌) and "Week N+1 preview" sections, plus a set-your-lineups reminder.
 - **Bench alert** (red): shown only when our bench scored while some of the 10 starting slots sat empty; the FP is
   what the best hindsight lineup would have added.
+- **Projected vs actual** (`fbgm/tracking.py`): each nightly run saves a snapshot (`state/snapshot-DATE.json`: per-team day and
+  week projections, per-player projections, win chance). The next report compares last night's projection with the
+  actual (team totals, biggest player misses/DNPs), and yesterday's week projection and win chance with today's,
+  split into "last night's miss" and "rest of week re-projection". On Mondays it compares the final with Sunday's
+  projection. No snapshot -> day numbers are rebuilt from current rosters (labelled) and week deltas are skipped.
+  `state/` must be committed and pushed after each run (see docs/nightly-routine.md) or tomorrow has nothing to diff.
+- **IR watch**: reads Rotowire news for players in our IR slot every run (return timelines like "at least four weeks",
+  "mid-December", ESPN status upgrades). Silent while there is no timeline or a return is far off. A timeline's first
+  appearance is announced once (re-announced if it moves 3+ days); from `ir_window_days` (14) out, every report shows the
+  target date, first game and which flex player to clear. `state/ir_watch.json` remembers what was announced.
 - **Power rankings** (FP/week): results (season pace 60% / last 7 days 40%) weighted days/(days+21) against roster
   strength (current roster on current form x league games per week), plus 25 FP per game over .500. Arrows compare
   with the ranking as of yesterday (same rosters, one day less of results).
