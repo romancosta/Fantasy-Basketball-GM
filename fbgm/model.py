@@ -6,7 +6,7 @@ import re
 from collections import defaultdict
 from zoneinfo import ZoneInfo
 
-from . import espn
+from . import espn, health
 from .config import AVAILABILITY, BENCH, CONFIG, IR, POLICY, SCORING_CONFIRMED, STAT_GP
 
 ET = ZoneInfo("America/New_York")
@@ -354,7 +354,8 @@ class League:
         for season in range(CONFIG["season"] - POLICY["rest_seasons"] + 1, CONFIG["season"] + 1):
             try:
                 log = espn.gamelog(pl.id, season)
-            except Exception:
+            except Exception as exc:
+                health.failed("NBA game logs", exc)
                 continue
             reg = {e for st in log.get("seasonTypes", []) if "Regular" in st.get("displayName", "")
                    for c in st.get("categories", []) for e in (x.get("eventId") for x in c.get("events", [])) if e}
@@ -365,7 +366,8 @@ class League:
             for team, played in by_team.items():
                 try:
                     sched = espn.team_schedule(team, season)
-                except Exception:
+                except Exception as exc:
+                    health.failed("NBA team schedules", exc)
                     continue
                 first, last = min(played), max(played)
                 if season == CONFIG["season"] and last >= self.today - dt.timedelta(days=7):
@@ -395,7 +397,8 @@ class League:
         if pl.id not in cache:
             try:
                 cache[pl.id] = [n for n in espn.news(pl.id) if n.get("type") == "Rotowire"]
-            except Exception:
+            except Exception as exc:
+                health.failed("player news", exc)
                 cache[pl.id] = []
         return cache[pl.id]
 
@@ -519,7 +522,8 @@ class League:
                     for it in t["items"]:
                         if it["type"] == "ADD":
                             out[it["playerId"]] = max(when, out.get(it["playerId"], when))
-            except Exception:
+            except Exception as exc:
+                health.failed("recent transactions (flex pool may be wrong)", exc)
                 out = {}
             self._recent_adds = out
         return self._recent_adds

@@ -4,6 +4,7 @@ import json
 import os
 import re
 
+from . import health
 from .config import IR, POLICY
 
 STATE_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "state")
@@ -13,7 +14,10 @@ def _load(name):
     try:
         with open(os.path.join(STATE_DIR, name)) as f:
             return json.load(f)
-    except (OSError, ValueError):
+    except FileNotFoundError:
+        return None
+    except (OSError, ValueError) as exc:
+        health.warn(f"state file {name} is unreadable ({type(exc).__name__}); treated as missing", source="state")
         return None
 
 
