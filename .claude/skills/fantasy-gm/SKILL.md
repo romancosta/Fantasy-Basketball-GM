@@ -109,6 +109,14 @@ Prints the finished report in markdown; the reader only replaces `{{OVERVIEW}}` 
   agent adds 10+ FP tonight AND a flex-pool player who isn't starting tonight can be cut for him (core players, idle or injured, are never offered); at-risk starters are
   only listed when someone could cover; tiny reshuffles are ignored. Changes are only possible for games not yet started.
   Scheduled by docs/pretip-routine.md.
+- **Season picture** (`fbgm/season.py`): standings from completed weeks, and playoff odds from 4,000 simulations of every
+  remaining week (21 regular-season weeks, top 4 of 8 make the playoffs; ESPN lists playoff weeks 22-23). Team strength =
+  power-rankings strength without the record bonus, pulled toward the league mean early in the season, with a weekly score
+  spread and an uncertainty about each team's true strength that both shrink as weeks are played. This week's win chance is
+  pinned to the nightly's simulation. Shows the odds with a win vs a loss this week (🎯 Must-win when the gap is 15+ pts),
+  the next three opponents, and the chance The Godfather finishes ahead of us. "ESPN says" is ESPN's own simulation as a sanity
+  check. ASSUMED, not verified: seeding by overall record with ties broken by fewer points against (ESPN's rule is labelled
+  only "total points against"); divisions (East/West) are not modelled.
 - **Power rankings** (FP/week): results (season pace 60% / last 7 days 40%) weighted days/(days+21) against roster
   strength (current roster on current form x league games per week), plus 25 FP per game over .500. Arrows compare
   with the ranking as of yesterday (same rosters, one day less of results).

@@ -4,7 +4,7 @@ import datetime as dt
 import io
 import re
 
-from . import espn, health, tracking
+from . import espn, health, season, tracking
 from .config import BENCH, CONFIG, DECIDED_LABEL, IR, OUTLOOK, POLICY
 from .fmt import inj, short_name, table
 from .gm import move_tag, plan_moves
@@ -286,6 +286,69 @@ def roster_moves(lg, a, decided):
         print("- ↻ Update your lineups after making these moves.")
 
 
+def season_section(lg, p_me):
+    """Standings, playoff odds, and what this week is worth, from the schedule's results and a season simulation."""
+    me = CONFIG["my_team_id"]
+    sched = lg.raw["schedule"]
+    ss = lg.raw["settings"]["scheduleSettings"]
+    n_weeks, n_playoff = ss["matchupPeriodCount"], ss["playoffTeamCount"]
+    ids = list(lg.teams)
+    rankings = dict(lg.power_rankings())
+    raw = {t: info["power"] - POLICY["power_record_fp"] * (info["w"] - info["l"]) for t, info in rankings.items()}
+    past = season.completed_weeks(sched, lg.matchup_period)
+    # Early ratings are noisy (a week of results, rosters mid-churn): pull them toward the league mean, less each week.
+    weeks_played = len(past) / max(len(ids) / 2, 1)
+    k = POLICY["season_strength_weeks"]
+    pull = POLICY["season_regress"] * k / (k + weeks_played)
+    mean = sum(raw.values()) / len(raw)
+    strength = {t: mean + (s - mean) * (1 - pull) for t, s in raw.items()}
+    sd = season.week_sds(strength, past, POLICY["season_sd_ratio"])
+    share = len(lg.remaining_days()) / max(len(lg.week_days), 1)
+    current = {t: (sum(lg.points_so_far(t).values()), share) for t in ids}
+    rival = next((t for t in ids if CONFIG["rival_name"].lower() in lg.team_names[t].lower()), None)
+    unsure = POLICY["season_strength_sd_ratio"] * (k / (k + weeks_played)) ** 0.5
+    sim = season.simulate(sched, lg.matchup_period, ids, strength, sd, current, me, p_me, n_playoff, rival,
+                          sims=POLICY["season_sims"], seed=f"season-{lg.today}",
+                          strength_sd={t: unsure * strength[t] for t in ids})
+    rec = season.standings(sched, lg.matchup_period, ids)
+    order = sorted(ids, key=lambda t: season.order_key(rec[t]))
+    # Rank ties on the model's expected wins so early-season rows (everyone 1-0) are in a useful order.
+    order.sort(key=lambda t: (season.order_key(rec[t])[0], -sim["wins"][t]))
+    print(f"\n## Season picture · week {lg.matchup_period} of {n_weeks} · top {n_playoff} make the playoffs")
+    rows = []
+    for i, t in enumerate(order):
+        espn_pct = (lg.teams[t].get("currentSimulationResults") or {}).get("playoffPct")
+        name = lg.team_names[t]
+        name = f"**{name}**" if t == me else f"{name} 👑" if t == rival else name
+        rr = rec[t]
+        rows.append([str(i + 1), name, f"{rr['w']}-{rr['l']}" + (f"-{rr['t']}" if rr["t"] else ""),
+                     f"{rr['pf']:,.0f}", f"{rr['pa']:,.0f}", f"{sim['playoff'][t]:.0%}",
+                     f"{espn_pct:.0%}" if espn_pct is not None else "-"])
+    table(["#", "Team", "W-L", "PF", "PA", "Playoffs", "ESPN says"], rows, text_cols=2)
+    line = (f"\n**Us**: projected finish {sim['wins'][me]:.1f}-{n_weeks - sim['wins'][me]:.1f} · playoffs "
+            f"{sim['playoff'][me]:.0%} · #1 seed {sim['seed1'][me]:.0%}")
+    if rival is not None and sim["rival_ahead"] is not None:
+        line += f" · {lg.team_names[rival]} finishes ahead of us in {sim['rival_ahead']:.0%} of sims"
+    print(line)
+    win, loss = sim["me_if_win"], sim["me_if_loss"]
+    if win is not None and loss is not None:
+        swing = win - loss
+        flag = " 🎯 **Must-win week**" if swing >= POLICY["season_must_win_swing"] else ""
+        print(f"\n**This week**: playoff odds {win:.0%} with a win, {loss:.0%} with a loss (swing {swing * 100:.0f} pts){flag}")
+    nxt = sorted((m["matchupPeriodId"], m["home"]["teamId"] if m["away"]["teamId"] == me else m["away"]["teamId"])
+                 for m in sched if m["matchupPeriodId"] > lg.matchup_period and "away" in m
+                 and me in (m["home"]["teamId"], m["away"]["teamId"]))[:3]
+    if nxt:
+        parts = []
+        for wk, opp in nxt:
+            spread = (sd[me] ** 2 + sd[opp] ** 2 + (unsure * strength[me]) ** 2 + (unsure * strength[opp]) ** 2) ** 0.5
+            p = season.ND.cdf((strength[me] - strength[opp]) / spread)
+            parts.append(f"wk {wk} {lg.team_names[opp]} {p:.0%}")
+        print("\n**Next**: " + " · ".join(parts))
+    print("\n_Odds simulate every remaining week from team strength (results + roster). Playoff seeding assumes overall record, "
+          "ties broken by fewer points against; division rules are not modelled. 'ESPN says' is ESPN's own simulation._")
+
+
 def power_rankings_section(lg, me):
     print("\n## Power rankings")
     now = lg.power_rankings()
@@ -362,6 +425,8 @@ def nightly_body(lg, a):
                 print("\n" + alert)
             compare_with_snapshot(lg, rec, proj, p, me, opp)
 
+    with health.section("Season picture"):
+        season_section(lg, p)
     with health.section("IR watch"):
         ir_section(lg)
     with health.section("News & rest watch"):
