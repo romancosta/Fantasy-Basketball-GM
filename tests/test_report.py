@@ -4,7 +4,7 @@ import io
 import unittest
 from types import SimpleNamespace as NS
 
-from fbgm import fmt, report
+from fbgm import fmt, health, report
 from fbgm.config import BENCH, DECIDED_LABEL
 
 D = dt.date
@@ -116,6 +116,47 @@ class BenchMissed(unittest.TestCase):
         lg = NS(slots=[0])
         side = {"players": [(0, "A", 30.0, {}, {0}), (BENCH, "B", 45.0, {}, {0})]}
         self.assertEqual(report.bench_missed(lg, side)[0], 0.0)
+
+
+class NightlyWrapper(unittest.TestCase):
+    """cmd_nightly adds the health banner under the outlook line and a Health section at the end."""
+
+    def setUp(self):
+        health.reset()
+        self.addCleanup(health.reset)
+        self._check, self._body = health.check_league, report.nightly_body
+        health.check_league = lambda lg: None
+        self.addCleanup(setattr, health, "check_league", self._check)
+        self.addCleanup(setattr, report, "nightly_body", self._body)
+
+    def run_with(self, body):
+        report.nightly_body = body
+        return capture(report.cmd_nightly, None, None)[0]
+
+    def test_clean_report_is_unchanged(self):
+        out = self.run_with(lambda lg, a: print("# Head\n\n{{OVERVIEW}} **Outlook: x**\n\n## Body"))
+        self.assertEqual(out, "# Head\n\n{{OVERVIEW}} **Outlook: x**\n\n## Body\n")
+
+    def test_issue_adds_banner_and_health_section(self):
+        def body(lg, a):
+            print("# Head\n\n{{OVERVIEW}} **Outlook: x**\n\n## Body")
+            health.warn("something is off")
+        lines = self.run_with(body).splitlines()
+        i = lines.index("{{OVERVIEW}} **Outlook: x**") if "{{OVERVIEW}} **Outlook: x**" in lines else 2
+        self.assertTrue(lines[i + 2].startswith("> ⚠️ 1 data issue"))
+        self.assertEqual(lines[-2:], ["## Health", "- ⚠️ something is off"])
+
+    def test_failed_section_is_contained(self):
+        def body(lg, a):
+            print("# Head\n\n{{OVERVIEW}} **Outlook: x**")
+            with health.section("IR watch"):
+                raise ValueError("bad")
+            print("\n## Power rankings")
+        with contextlib.redirect_stderr(io.StringIO()):
+            out = self.run_with(body)
+        self.assertIn("## IR watch\n- ⚠️ Unavailable this run: ValueError: bad", out)
+        self.assertIn("## Power rankings", out)
+        self.assertIn("IR watch section failed", out)
 
 
 if __name__ == "__main__":

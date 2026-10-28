@@ -1,8 +1,12 @@
 import contextlib
 import io
+import datetime as dt
 import unittest
+from types import SimpleNamespace as NS
 
 from fbgm import health
+
+D = dt.date
 
 
 class Health(unittest.TestCase):
@@ -40,6 +44,35 @@ class Health(unittest.TestCase):
         with health.section("x"):
             pass
         self.assertEqual(health.issues(), [])
+
+
+class CheckLeague(unittest.TestCase):
+    def setUp(self):
+        health.reset()
+        self.addCleanup(health.reset)
+
+    def lg(self, **kw):
+        base = dict(roster=lambda: ["p"], players=dict.fromkeys(range(500)), today=D(2026, 10, 28),
+                    date_sp={D(2026, 10, 28): 9}, week_of=lambda d: 2, matchup_period=2, scoring_mismatch={},
+                    opponent_id=lambda: 3)
+        base.update(kw)
+        return NS(**base)
+
+    def test_healthy_league_is_silent(self):
+        health.check_league(self.lg())
+        self.assertEqual(health.issues(), [])
+
+    def test_each_warning(self):
+        health.check_league(self.lg(players={}, date_sp={}, week_of=lambda d: 3, scoring_mismatch={4: (1, 2)}))
+        text = health.render()
+        for needle in ("pool is unusually small", "no scoring period", "date mapping disagrees", "scoring differs"):
+            self.assertIn(needle, text)
+
+    def test_fatal_problems_raise(self):
+        with self.assertRaises(RuntimeError):
+            health.check_league(self.lg(roster=lambda: []))
+        with self.assertRaises(RuntimeError):
+            health.check_league(self.lg(opponent_id=lambda: None))
 
 
 if __name__ == "__main__":

@@ -1,8 +1,10 @@
 """Recap and morning-report (markdown) commands."""
+import contextlib
 import datetime as dt
+import io
 import re
 
-from . import espn, tracking
+from . import espn, health, tracking
 from .config import BENCH, CONFIG, DECIDED_LABEL, IR, OUTLOOK, POLICY
 from .fmt import inj, short_name, table
 from .gm import move_tag, plan_moves
@@ -302,11 +304,15 @@ def power_rankings_section(lg, me):
           "Power blends results (more weight as the season goes) with roster strength, plus record. Arrows = vs yesterday._")
 
 
-def cmd_nightly(lg, a):
+def nightly_body(lg, a):
     """Morning report in markdown: overview + outlook, matchup grid (Mondays: last week's final and the
     new week's preview), roster moves, power rankings. {{OVERVIEW}} is for the reader to fill in."""
     me, opp = CONFIG["my_team_id"], lg.opponent_id()
-    rec = recap_data(lg, lg.today - dt.timedelta(days=1))
+    try:
+        rec = recap_data(lg, lg.today - dt.timedelta(days=1))
+    except Exception as exc:   # noqa: BLE001 - the report is still useful without last night's recap
+        health.warn(f"last night's box scores unavailable ({type(exc).__name__}: {exc})", source="espn")
+        rec = None
     p = lg.win_probability(me, opp)
     print(f"# {lg.now:%a %b %-d, %Y · %-I:%M %p} ET")
     if lg.scoring_mismatch:
@@ -336,9 +342,7 @@ def cmd_nightly(lg, a):
         alert = bench_alert(lg, rec)
         if alert:
             print("\n" + alert)
-        snap = tracking.load_snapshot(rec["day"])
-        vs_projection(lg, rec, snap, me, opp)
-        week_delta(lg, rec, snap, proj, p, me, opp)
+        compare_with_snapshot(lg, rec, proj, p, me, opp)
         print(f"\n## Week {lg.matchup_period} preview · vs {names[1]}")
         cells = scored([proj[me][0], proj[opp][0]])
         table(["Team", tday, "Proj (margin)"],
@@ -356,15 +360,45 @@ def cmd_nightly(lg, a):
             alert = bench_alert(lg, rec)
             if alert:
                 print("\n" + alert)
-            snap = tracking.load_snapshot(rec["day"])
-            vs_projection(lg, rec, snap, me, opp)
-            week_delta(lg, rec, snap, proj, p, me, opp)
+            compare_with_snapshot(lg, rec, proj, p, me, opp)
 
-    ir_section(lg)
-    news_section(lg, me, opp)
+    with health.section("IR watch"):
+        ir_section(lg)
+    with health.section("News & rest watch"):
+        news_section(lg, me, opp)
+    with health.section("Roster moves"):
+        roster_moves(lg, a, decided)
+    with health.section("Snapshot save", quiet=True):
+        tracking.save_snapshot(lg, proj, today, p, (me, opp))
+    with health.section("Power rankings"):
+        power_rankings_section(lg, me)
 
-    roster_moves(lg, a, decided)
 
-    tracking.save_snapshot(lg, proj, today, p, (me, opp))
+def compare_with_snapshot(lg, rec, proj, p, me, opp):
+    """Last night's projected-vs-actual and the week-projection delta, against yesterday's saved snapshot."""
+    with health.section("Projected vs actual"):
+        snap = tracking.load_snapshot(rec["day"])
+        if snap is None:
+            health.warn(f"no projection snapshot saved for {rec['day']}; last night's projections were rebuilt from "
+                        f"current rosters and the week comparison is skipped", source="state")
+        vs_projection(lg, rec, snap, me, opp)
+        week_delta(lg, rec, snap, proj, p, me, opp)
 
-    power_rankings_section(lg, me)
+
+def cmd_nightly(lg, a):
+    """Morning report. The body is built first so a data-health banner can sit under the outlook line and a Health
+    section can close the report; section failures are contained (see health.section)."""
+    health.reset()
+    health.check_league(lg)
+    buf = io.StringIO()
+    with contextlib.redirect_stdout(buf):
+        nightly_body(lg, a)
+    text = buf.getvalue()
+    banner = health.banner()
+    if banner:
+        lines = text.split("\n")
+        at = next((i for i, ln in enumerate(lines) if "{{OVERVIEW}}" in ln), 0)
+        text = "\n".join(lines[:at + 1] + ["", banner] + lines[at + 1:])
+    print(text.rstrip("\n"))
+    if health.issues():
+        print(health.render())
