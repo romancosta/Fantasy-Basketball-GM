@@ -3,6 +3,7 @@
 Notable changes to the nightly report and tooling. Newest first.
 
 ## Unreleased
+- Schedule look-ahead (M4): games per player and lineup FP vs each opponent for the next 3 weeks; moves show next-3-week games.
 - Season picture (M3): standings, playoff odds, must-win flag and Godfather watch in the nightly.
 - Pre-tip lineup check (M2): `fbgm pretip` and a routine that runs before tonight's games lock.
 - Monitoring (M1): section failures are contained; silent data failures are counted; data checks; health banner and
