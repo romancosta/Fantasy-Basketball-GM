@@ -8,8 +8,8 @@ from .config import BENCH, IR, POLICY, SLOT_NAMES
 from .fmt import inj
 
 # Headlines about today's availability worth showing for a starter.
-TODAY_NEWS = re.compile(r"out|inactive|scratch|questionable|doubtful|game-time|probable|available|will play|"
-                        r"will not play|won't play|sidelined|minutes restriction|rest", re.I)
+TODAY_NEWS = re.compile(r"\b(?:out|inactive|scratch(?:ed)?|questionable|doubtful|game-time|probable|available|"
+                        r"will play|will not play|won't play|sidelined|minutes restriction|rest)\b", re.I)
 
 
 def day_value(lg, pl, day):

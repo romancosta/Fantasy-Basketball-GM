@@ -173,5 +173,33 @@ class TwoBigsOut(unittest.TestCase):
         self.assertEqual(pretip.pretip(lg)[0], "OK")
 
 
+class NewsMatching(unittest.TestCase):
+    def test_availability_headlines_match(self):
+        for head in ("Guard (ankle) is questionable for tonight's game.", "Big will not play Wednesday.",
+                     "Wing is listed as probable.", "Guard is out for tonight."):
+            self.assertTrue(pretip.TODAY_NEWS.search(head), head)
+
+    def test_stat_line_recaps_do_not_match(self):
+        for head in ("Guard finished with 29 points, nine rebounds and nine assists over 37 minutes.",
+                     "Big posted a double-double without a turnover in the win.",
+                     "Wing shot 6-of-12 from the field and scored about 20 points."):
+            self.assertFalse(pretip.TODAY_NEWS.search(head), head)
+
+    def test_old_news_is_ignored(self):
+        old = {"headline": "Guard (ankle) is questionable.", "published": "2026-10-28T05:00:00Z"}   # 1am ET
+        lg = make_lg([P("Guard", {0}, 0), P("Big", {1}, 1), P("Cover", {0}, BENCH, 15)])
+        for p in lg.rosters[31]:
+            lg._news[p.id] = [old]
+        self.assertEqual(pretip.pretip(lg)[0], "OK")
+
+    def test_fresh_news_makes_a_covered_starter_a_watch(self):
+        fresh = {"headline": "Guard (ankle) is questionable.", "published": "2026-10-28T20:30:00Z"}   # 4:30pm ET
+        lg = make_lg([P("Guard", {0}, 0), P("Big", {1}, 1), P("Cover", {0}, BENCH, 15)])
+        lg._news[lg.rosters[31][0].id] = [fresh]
+        status, lines = pretip.pretip(lg)
+        self.assertEqual(status, "WATCH")
+        self.assertIn("news: Guard (ankle) is questionable.", "\n".join(lines))
+
+
 if __name__ == "__main__":
     unittest.main()
