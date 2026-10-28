@@ -262,6 +262,46 @@ def ir_section(lg):
         print(line)
 
 
+def roster_moves(lg, a, decided):
+    print("\n## Roster moves")
+    flex, _, plan, alts = plan_moves(lg, a)
+    if lg.today.weekday() == 0:
+        print("- 📋 New week: set your lineups for the week.")
+    print("- Flex: " + (", ".join(f"{q.name} (form {q.form:.1f})" for q in flex) or "none"))
+    if decided:
+        print(f"- **Skip** · week {lg.matchup_period} is decided; this week's moves can't change the result.")
+        plan, alts = [], []
+    elif not plan:
+        print(f"- **Hold** · no move adds {POLICY['flex_min_week_gain']:.0f}+ FP this week.")
+    for r in plan:
+        wk, starts, add, drop = r
+        print(f"- **+{add.name} / −{drop.name}**{move_tag(lg, r, flex)}: **{wk:+.0f} FP this week** · "
+              f"form {add.form:.1f} vs {drop.form:.1f} · {len(starts)} start{'s' * (len(starts) != 1)}"
+              f"{' · waivers' if add.status == 'WAIVERS' else ''}{inj(add)}")
+    if alts:
+        print("  - Backups: " + ", ".join(f"+{r[2].name} ({r[0]:+.0f})" for r in alts))
+    if plan:
+        print("- ↻ Update your lineups after making these moves.")
+
+
+def power_rankings_section(lg, me):
+    print("\n## Power rankings")
+    now = lg.power_rankings()
+    prev = {tid: i for i, (tid, _) in enumerate(lg.power_rankings(lg.today - dt.timedelta(days=1)))}
+    rows = []
+    for i, (tid, t) in enumerate(now):
+        d = prev[tid] - i if prev else 0
+        move = f"▲{d}" if d > 0 else f"▼{-d}" if d < 0 else "–"
+        name = f"**{lg.team_names[tid]}**" if tid == me else lg.team_names[tid]
+        rec_ = f"{t['w']}-{t['l']}" + (f"-{t['t']}" if t["t"] else "")
+        trend = "🔥" if t["l7"] > 1.05 * t["pace"] else "🧊" if t["l7"] < 0.95 * t["pace"] else ""
+        rows.append([f"{i + 1} {move}", name, rec_, f"{t['pace']:,.0f}", f"{t['l7']:,.0f}{trend}",
+                     f"{t['roster']:,.0f}", f"{t['power']:,.0f}"])
+    table(["#", "Team", "W-L", "Pace", "L7", "Roster", "Power"], rows, text_cols=2)
+    print("\n_FP per week. Pace = season scoring rate, L7 = last 7 days, Roster = current roster on current form. "
+          "Power blends results (more weight as the season goes) with roster strength, plus record. Arrows = vs yesterday._")
+
+
 def cmd_nightly(lg, a):
     """Morning report in markdown: overview + outlook, matchup grid (Mondays: last week's final and the
     new week's preview), roster moves, power rankings. {{OVERVIEW}} is for the reader to fill in."""
@@ -323,40 +363,8 @@ def cmd_nightly(lg, a):
     ir_section(lg)
     news_section(lg, me, opp)
 
-    print("\n## Roster moves")
-    flex, _, plan, alts = plan_moves(lg, a)
-    if lg.today.weekday() == 0:
-        print("- 📋 New week: set your lineups for the week.")
-    print("- Flex: " + (", ".join(f"{q.name} (form {q.form:.1f})" for q in flex) or "none"))
-    if decided:
-        print(f"- **Skip** · week {lg.matchup_period} is decided; this week's moves can't change the result.")
-        plan, alts = [], []
-    elif not plan:
-        print(f"- **Hold** · no move adds {POLICY['flex_min_week_gain']:.0f}+ FP this week.")
-    for r in plan:
-        wk, starts, add, drop = r
-        print(f"- **+{add.name} / −{drop.name}**{move_tag(lg, r, flex)}: **{wk:+.0f} FP this week** · "
-              f"form {add.form:.1f} vs {drop.form:.1f} · {len(starts)} start{'s' * (len(starts) != 1)}"
-              f"{' · waivers' if add.status == 'WAIVERS' else ''}{inj(add)}")
-    if alts:
-        print("  - Backups: " + ", ".join(f"+{r[2].name} ({r[0]:+.0f})" for r in alts))
-    if plan:
-        print("- ↻ Update your lineups after making these moves.")
+    roster_moves(lg, a, decided)
 
     tracking.save_snapshot(lg, proj, today, p, (me, opp))
 
-    print("\n## Power rankings")
-    now = lg.power_rankings()
-    prev = {tid: i for i, (tid, _) in enumerate(lg.power_rankings(lg.today - dt.timedelta(days=1)))}
-    rows = []
-    for i, (tid, t) in enumerate(now):
-        d = prev[tid] - i if prev else 0
-        move = f"▲{d}" if d > 0 else f"▼{-d}" if d < 0 else "–"
-        name = f"**{lg.team_names[tid]}**" if tid == me else lg.team_names[tid]
-        rec_ = f"{t['w']}-{t['l']}" + (f"-{t['t']}" if t["t"] else "")
-        trend = "🔥" if t["l7"] > 1.05 * t["pace"] else "🧊" if t["l7"] < 0.95 * t["pace"] else ""
-        rows.append([f"{i + 1} {move}", name, rec_, f"{t['pace']:,.0f}", f"{t['l7']:,.0f}{trend}",
-                     f"{t['roster']:,.0f}", f"{t['power']:,.0f}"])
-    table(["#", "Team", "W-L", "Pace", "L7", "Roster", "Power"], rows, text_cols=2)
-    print("\n_FP per week. Pace = season scoring rate, L7 = last 7 days, Roster = current roster on current form. "
-          "Power blends results (more weight as the season goes) with roster strength, plus record. Arrows = vs yesterday._")
+    power_rankings_section(lg, me)
