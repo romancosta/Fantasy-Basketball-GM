@@ -3,6 +3,7 @@
 Notable changes to the nightly report and tooling. Newest first.
 
 ## Unreleased
+- Pre-tip lineup check (M2): `fbgm pretip` and a routine that runs before tonight's games lock.
 - Monitoring (M1): section failures are contained; silent data failures are counted; data checks; health banner and
   Health section; `fbgm watchdog` and a watchdog routine; `FBGM ERROR` line on fatal failures; nightly routine persists
   state before replying.

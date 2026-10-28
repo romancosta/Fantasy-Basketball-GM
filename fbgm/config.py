@@ -92,6 +92,10 @@ POLICY = {
     "ir_window_days": 14,
     # ...and whenever a known return estimate moves by this many days or more (either direction), however far out.
     "ir_shift_days": 3,
+    # Pre-tip check: news about a starter counts if it is at most this many hours old.
+    "pretip_news_hours": 8,
+    # ...and a lineup change or pickup is only worth an alert when it adds at least this many FP tonight.
+    "pretip_min_gain": 10.0,
     "decided_win": 0.99,
     "decided_loss": 0.01,
 }

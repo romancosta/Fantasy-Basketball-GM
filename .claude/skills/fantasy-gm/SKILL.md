@@ -18,6 +18,7 @@ python3 -m fbgm swap "<add>" "<drop>"
 python3 -m fbgm rivals [--days 7]  # other teams' adds/drops
 python3 -m fbgm recap [--date D]   # last night: points per player for both matchup teams
 python3 -m fbgm nightly            # morning report (markdown): outlook, matchup grid, moves, power rankings
+python3 -m fbgm pretip             # before tonight's games lock: lineup changes, empty slots, starters who might sit (quiet if fine)
 python3 -m fbgm check              # scoring + date-mapping self-test
 ```
 Global flags (before the command): `--fresh` (skip 5-min cache), `--mode aggressive`, `--today YYYY-MM-DD`.
@@ -99,6 +100,15 @@ Prints the finished report in markdown; the reader only replaces `{{OVERVIEW}}` 
   mismatch - add a "⚠️ data issues" banner under the outlook line and a closing **Health** section. An empty roster or
   missing opponent stops the run with a final `FBGM ERROR (...)` line. `python3 -m fbgm watchdog` (git only) checks the
   `nightly-state` branch for today's `nightly state` commit; run it from a separate routine (docs/watchdog-routine.md).
+- **Pre-tip check** (`pretip`, `fbgm/pretip.py`): uses each player's expected FP *for tonight* (rate x availability x
+  chance he sits, with one-game rulings from news counted as OUT tonight), keeps locked players where they are, and reports
+  `PRETIP OK` (nothing to do), `WATCH` (set, but a starter might sit and a bench player could cover him), or `ACTION`
+  (slot changes worth `pretip_min_gain` (10) FP tonight, or an IR player ESPN lists as playable), or `PICKUP` (lineup is
+  set but an optional add earns points).
+  It only alerts when points are actually at stake: a star who is OUT with no bench cover is silent unless a free
+  agent adds 10+ FP tonight AND a flex-pool player who isn't starting tonight can be cut for him (core players, idle or injured, are never offered); at-risk starters are
+  only listed when someone could cover; tiny reshuffles are ignored. Changes are only possible for games not yet started.
+  Scheduled by docs/pretip-routine.md.
 - **Power rankings** (FP/week): results (season pace 60% / last 7 days 40%) weighted days/(days+21) against roster
   strength (current roster on current form x league games per week), plus 25 FP per game over .500. Arrows compare
   with the ranking as of yesterday (same rosters, one day less of results).
