@@ -247,9 +247,11 @@ class League:
             cands.append(pl)
         return best_lineup(cands, slots, lambda pl: pl.expected * self.rest_factor(pl, day))
 
-    def full_lineup(self, roster, day):
+    def full_lineup(self, roster, day, value=None):
         """Complete slot assignment for `day`: maximize projection, then keep players where they are.
-        Locked players stay put. Returns {Player: slot} with unassigned players -> BENCH."""
+        Locked players stay put. Returns {Player: slot} with unassigned players -> BENCH. value: Player -> FP for
+        the day (default expected)."""
+        value = value or (lambda pl: pl.expected)
         slots = list(self.slots)
         fixed, free = {}, []
         for pl in roster:
@@ -261,7 +263,7 @@ class League:
                     slots.remove(pl.lineup_slot)
             else:
                 free.append(pl)
-        w = [[(1000 * pl.expected if self.plays(pl, day) else 0) + (1 if s == pl.lineup_slot else 0.5)
+        w = [[(1000 * value(pl) if self.plays(pl, day) else 0) + (1 if s == pl.lineup_slot else 0.5)
               if s in pl.slots else 0 for s in slots] for pl in free]
         assign = hungarian_max(w) if free and slots else {}
         out = dict(fixed)
