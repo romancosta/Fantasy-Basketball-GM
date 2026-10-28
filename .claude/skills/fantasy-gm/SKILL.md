@@ -86,7 +86,7 @@ Prints the finished report in markdown; the reader only replaces `{{OVERVIEW}}` 
   actual (team totals, biggest player misses/DNPs), and yesterday's week projection and win chance with today's,
   split into "last night's miss" and "rest of week re-projection". On Mondays it compares the final with Sunday's
   projection. No snapshot -> day numbers are rebuilt from current rosters (labelled) and week deltas are skipped.
-  `state/` must be committed and pushed after each run (see docs/nightly-routine.md) or tomorrow has nothing to diff.
+  `state/` is an orphan git worktree of the `nightly-state` branch (gitignored on main) that the routine commits and pushes after each run (see docs/nightly-routine.md); without that, tomorrow has nothing to diff.
 - **IR watch**: reads Rotowire news for players in our IR slot every run (return timelines like "at least four weeks",
   "mid-December", ESPN status upgrades). Silent while there is no timeline or a return is far off. A timeline's first
   appearance is announced once (re-announced if it moves 3+ days); from `ir_window_days` (14) out, every report shows the
