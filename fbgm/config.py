@@ -4,6 +4,7 @@ CONFIG = {
     "league_id": 153490,
     "season": 2027,          # ESPN labels the 2026-27 season as 2027
     "my_team_id": 31,        # Hollywood Beach Ballers
+    "rival_name": "The Godfather",   # past champion, tracked in the season picture
 }
 
 # Confirmed against the league's manual scoring export (statId -> points).
@@ -96,6 +97,16 @@ POLICY = {
     "pretip_news_hours": 8,
     # ...and a lineup change or pickup is only worth an alert when it adds at least this many FP tonight.
     "pretip_min_gain": 10.0,
+    # Season picture: weekly score spread as a share of a team's strength (until it has its own history), and the
+    # playoff-odds swing between winning and losing this week that gets a must-win flag.
+    "season_sd_ratio": 0.10,
+    "season_sims": 4000,
+    # How unsure we are of a team's true strength (share of it), fading as weeks are played: x sqrt(k / (k + weeks)).
+    "season_strength_sd_ratio": 0.10,
+    "season_strength_weeks": 6,
+    # Early-season ratings are pulled toward the league mean by this share, fading the same way.
+    "season_regress": 0.5,
+    "season_must_win_swing": 0.15,
     "decided_win": 0.99,
     "decided_loss": 0.01,
 }

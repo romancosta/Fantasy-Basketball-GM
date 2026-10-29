@@ -138,7 +138,7 @@ class League:
         now = dt.datetime.now(ET)
         self.now = now if today is None else dt.datetime.combine(today, dt.time(0, 0), ET)
         self.today = self.now.date()
-        lg = espn.league("mTeam", "mSettings", "mRoster", "mMatchupScore", "mBoxscore")
+        lg = espn.league("mTeam", "mSettings", "mRoster", "mMatchupScore", "mBoxscore", "mStandings")
         self.raw = lg
         settings = lg["settings"]
         self.scoring = {i["statId"]: i["points"] for i in settings["scoringSettings"]["scoringItems"]}
