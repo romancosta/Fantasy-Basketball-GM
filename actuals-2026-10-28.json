@@ -1,0 +1,77 @@
+{
+ "date": "2026-10-28",
+ "final": false,
+ "period": 2,
+ "teams": {
+  "31": {
+   "day": 348.0,
+   "players": {
+    "Jabari Smith Jr.": {
+     "bench": false,
+     "pts": 32.0
+    },
+    "Jamal Murray": {
+     "bench": false,
+     "pts": 48.0
+    },
+    "Jaylen Brown": {
+     "bench": false,
+     "pts": 59.0
+    },
+    "LeBron James": {
+     "bench": false,
+     "pts": 60.0
+    },
+    "RJ Barrett": {
+     "bench": false,
+     "pts": 72.0
+    },
+    "Ryan Rollins": {
+     "bench": false,
+     "pts": 25.0
+    },
+    "Shai Gilgeous-Alexander": {
+     "bench": false,
+     "pts": 52.0
+    }
+   },
+   "total": 506.0
+  },
+  "5": {
+   "day": 345.0,
+   "players": {
+    "Austin Reaves": {
+     "bench": false,
+     "pts": 26.0
+    },
+    "Brandon Miller": {
+     "bench": false,
+     "pts": 81.0
+    },
+    "Cade Cunningham": {
+     "bench": false,
+     "pts": 72.0
+    },
+    "Dylan Harper": {
+     "bench": false,
+     "pts": 44.0
+    },
+    "Josh Hart": {
+     "bench": false,
+     "pts": 26.0
+    },
+    "Tyler Herro": {
+     "bench": false,
+     "pts": 37.0
+    },
+    "Zion Williamson": {
+     "bench": false,
+     "pts": 59.0
+    }
+   },
+   "total": 557.0
+  }
+ },
+ "version": 2,
+ "winner": null
+}

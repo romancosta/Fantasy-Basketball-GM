@@ -1,0 +1,52 @@
+{
+ "date": "2026-10-29",
+ "me": 31,
+ "opp": 5,
+ "period": 2,
+ "teams": {
+  "31": {
+   "day": 155.0,
+   "players": {
+    "Damian Lillard": {
+     "avail": 1.0,
+     "lineup": true,
+     "proj": 48.0,
+     "rest": 0.0
+    },
+    "Domantas Sabonis": {
+     "avail": 1.0,
+     "lineup": true,
+     "proj": 63.7,
+     "rest": 0.0
+    },
+    "Donovan Clingan": {
+     "avail": 1.0,
+     "lineup": true,
+     "proj": 43.3,
+     "rest": 0.0
+    }
+   },
+   "week": 1851.4
+  },
+  "5": {
+   "day": 87.7,
+   "players": {
+    "Zach LaVine": {
+     "avail": 1.0,
+     "lineup": true,
+     "proj": 43.0,
+     "rest": 0.0
+    },
+    "Zion Williamson": {
+     "avail": 1.0,
+     "lineup": true,
+     "proj": 44.6,
+     "rest": 0.125
+    }
+   },
+   "week": 1681.9
+  }
+ },
+ "version": 2,
+ "win_prob": 0.80675
+}
