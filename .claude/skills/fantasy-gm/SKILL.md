@@ -126,6 +126,11 @@ Prints the finished report in markdown; the reader only replaces `{{OVERVIEW}}` 
   10 before; players kept ~66% of the jump next 5 games and beat baseline by ~19%), or a star teammate (rate 40+) who is out
   (bench players scored ~27% more without a star, rotation players ~12%; constants are shaded down in config). Shows the top 5
   with an estimated FP/G uplift. Informational only: it does not feed `advise` or the move ranking.
+- **Accuracy data capture**: besides `snapshot-DATE.json` (v2: each player's projection, availability and rest odds, plus
+  `me`/`opp`), every nightly run saves `actuals-DATE.json` for the day just played (team points, each player's points, bench
+  flag, and the winner when the week ended). A snapshot and actuals file with the same date form one scored day. Both are kept for
+  200 days. `python3 -m fbgm accuracy` shows how many scored days exist; the review itself (bias, calibration, rest hit rate)
+  starts once `accuracy_min_days` (14) are captured.
 - **Power rankings** (FP/week): results (season pace 60% / last 7 days 40%) weighted days/(days+21) against roster
   strength (current roster on current form x league games per week), plus 25 FP per game over .500. Arrows compare
   with the ranking as of yesterday (same rosters, one day less of results).

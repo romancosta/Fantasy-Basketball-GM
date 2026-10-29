@@ -429,6 +429,9 @@ def nightly_body(lg, a):
     except Exception as exc:   # noqa: BLE001 - the report is still useful without last night's recap
         health.warn(f"last night's box scores unavailable ({type(exc).__name__}: {exc})", source="espn")
         rec = None
+    if rec:
+        with health.section("Actuals save", quiet=True):
+            tracking.save_actuals(rec)
     p = lg.win_probability(me, opp)
     print(f"# {lg.now:%a %b %-d, %Y · %-I:%M %p} ET")
     if lg.scoring_mismatch:

@@ -330,12 +330,16 @@ def main(argv=None):
     p = sub.add_parser("recap"); p.add_argument("--date")
     p = sub.add_parser("nightly"); p.add_argument("--n", type=int, default=3)
     sub.add_parser("pretip", help="lineup check before today's games lock (quiet when nothing to do)")
+    sub.add_parser("accuracy", help="how much projected-vs-actual data has been captured")
     p = sub.add_parser("watchdog", help="check that last night's state was committed (needs git only)")
     p.add_argument("--branch", default="nightly-state")
     a = ap.parse_args(argv)
     if a.cmd == "watchdog":
         from .watchdog import cmd_watchdog
         sys.exit(cmd_watchdog(a))
+    if a.cmd == "accuracy":
+        from .tracking import cmd_accuracy
+        sys.exit(cmd_accuracy(a))
     espn.FRESH = a.fresh
     try:
         lg = League(dt.date.fromisoformat(a.today) if a.today else None)

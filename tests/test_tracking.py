@@ -5,7 +5,7 @@ from types import SimpleNamespace as NS
 from unittest import mock
 
 from fbgm import tracking
-from fbgm.config import BENCH, IR
+from fbgm.config import AVAILABILITY, BENCH, IR
 
 D = dt.date
 
@@ -55,6 +55,10 @@ class Player:
         self.id, self.name, self.lineup_slot, self.injury = pid, name, slot, injury
         self.pro_team, self.rate, self.expected = 1, 30.0, 30.0
 
+    @property
+    def availability(self):
+        return AVAILABILITY[self.injury]
+
 
 def player(pid, name, slot, injury="OUT"):
     return Player(pid, name, slot, injury)
@@ -65,7 +69,7 @@ class Snapshot(Fixture):
         a = player(1, "Ann", 0, "ACTIVE")
         b = player(2, "Bob", BENCH, "ACTIVE")
         return NS(today=D(2026, 10, 28), matchup_period=2, roster=lambda tid: [a, b],
-                  locked=lambda p, d: locked, plays=lambda p, d: True, rest_factor=lambda p, d: 0.9,
+                  locked=lambda p, d: locked, plays=lambda p, d: True, rest_factor=lambda p, d: 0.9, rest_chance=lambda p, d: 0.1,
                   day_projection=lambda r, d: (27.0, {a: 0}))
 
     def test_round_trip(self):
@@ -75,7 +79,7 @@ class Snapshot(Fixture):
         self.assertEqual(snap["win_prob"], 0.81)
         t = snap["teams"]["7"]
         self.assertEqual((t["week"], t["day"]), (500.0, 120.0))
-        self.assertEqual(t["players"]["Ann"], {"proj": 27.0, "lineup": True})
+        self.assertEqual(t["players"]["Ann"], {"proj": 27.0, "lineup": True, "avail": 1.0, "rest": 0.1})
         self.assertFalse(t["players"]["Bob"]["lineup"])
 
     def test_started_games_keep_pregame_snapshot(self):
@@ -146,6 +150,62 @@ class CorruptState(Fixture):
             f.write("{not json")
         self.assertIsNone(tracking.load_snapshot(D(2026, 10, 28)))
         self.assertIn("snapshot-2026-10-28.json is unreadable", health.render())
+
+
+def recap(final=False, totals=(1000.0, 900.0)):
+    mine = [(0, "Ann Able", 80.0, {}, set()), (BENCH, "Bench Guy", 12.5, {}, set())]
+    return {"day": D(2026, 10, 27), "sp": 9, "period": 2, "final": final, "sides": [
+        {"tid": 7, "day_pts": 92.5, "total": totals[0], "players": mine},
+        {"tid": 8, "day_pts": 60.0, "total": totals[1], "players": [(0, "Ben Best", 60.0, {}, set())]}]}
+
+
+class Capture(Fixture):
+    def test_actuals_round_trip(self):
+        tracking.save_actuals(recap())
+        a = tracking.load_actuals(D(2026, 10, 27))
+        self.assertEqual((a["date"], a["period"], a["final"], a["winner"]), ("2026-10-27", 2, False, None))
+        self.assertEqual(a["teams"]["7"]["day"], 92.5)
+        self.assertEqual(a["teams"]["7"]["players"]["Ann Able"], {"pts": 80.0, "bench": False})
+        self.assertEqual(a["teams"]["7"]["players"]["Bench Guy"], {"pts": 12.5, "bench": True})
+
+    def test_week_end_records_the_winner(self):
+        tracking.save_actuals(recap(final=True, totals=(1000.0, 1100.0)))
+        self.assertEqual(tracking.load_actuals(D(2026, 10, 27))["winner"], 8)
+        tracking.save_actuals(recap(final=True, totals=(1000.0, 1000.0)))
+        self.assertIsNone(tracking.load_actuals(D(2026, 10, 27))["winner"])
+
+    def test_snapshot_players_carry_availability_and_rest_odds(self):
+        a = player(1, "Ann", 0, "DAY_TO_DAY")
+        lg = NS(today=D(2026, 10, 28), matchup_period=2, roster=lambda tid: [a], locked=lambda p, d: False,
+                plays=lambda p, d: True, rest_factor=lambda p, d: 0.8, rest_chance=lambda p, d: 0.2,
+                day_projection=lambda r, d: (20.0, {a: 0}))
+        tracking.save_snapshot(lg, {7: (500.0, 0, 0), 8: (400.0, 0, 0)}, {7: 120.0, 8: 100.0}, 0.7, (7, 8))
+        snap = tracking.load_snapshot(D(2026, 10, 28))
+        self.assertEqual((snap["version"], snap["me"], snap["opp"]), (tracking.SNAPSHOT_VERSION, 7, 8))
+        self.assertEqual(snap["teams"]["7"]["players"]["Ann"],
+                         {"proj": 24.0, "lineup": True, "avail": 0.6, "rest": 0.2})
+
+    def test_prune_keeps_the_newest(self):
+        for day in range(1, 6):
+            tracking._save(f"actuals-2026-10-0{day}.json", {})
+        tracking.prune("actuals-", keep=3)
+        self.assertEqual(tracking.capture_status()[1], ["2026-10-03", "2026-10-04", "2026-10-05"])
+
+    def test_capture_status_pairs_snapshots_with_actuals(self):
+        for name in ("snapshot-2026-10-27.json", "snapshot-2026-10-28.json", "actuals-2026-10-27.json"):
+            tracking._save(name, {})
+        snaps, acts, both = tracking.capture_status()
+        self.assertEqual((len(snaps), len(acts), both), (2, 1, ["2026-10-27"]))
+
+    def test_accuracy_command_says_when_there_is_not_enough_data(self):
+        import contextlib
+        import io
+        tracking._save("snapshot-2026-10-27.json", {})
+        buf = io.StringIO()
+        with contextlib.redirect_stdout(buf):
+            tracking.cmd_accuracy(None)
+        self.assertIn("Not enough data yet", buf.getvalue())
+        self.assertIn("Projection snapshots: 1", buf.getvalue())
 
 
 if __name__ == "__main__":
