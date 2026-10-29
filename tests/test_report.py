@@ -231,5 +231,38 @@ class NightlyWrapper(unittest.TestCase):
         self.assertIn("IR watch section failed", out)
 
 
+class League(unittest.TestCase):
+    NAMES = {1: "Us Team", 2: "The Godfather", 3: "Joe Po Knows Ball", 4: "eyeBALL"}
+    POWER = [(2, {"power": 2054.0, "l7": 2407.0, "pace": 2180.0}), (1, {"power": 2034.0, "l7": 2100.0, "pace": 2040.0}),
+             (3, {"power": 1666.0, "l7": 1500.0, "pace": 1802.0}), (4, {"power": 1539.0, "l7": 1887.0, "pace": 1766.0})]
+    REC = {1: {"w": 1, "l": 0, "t": 0}, 2: {"w": 0, "l": 1, "t": 0}, 3: {"w": 0, "l": 1, "t": 0}, 4: {"w": 1, "l": 0, "t": 1}}
+    SIM = {"playoff": {1: 0.77, 2: 0.78, 3: 0.28, 4: 0.16}, "seed1": {1: 0.28}, "me_if_win": 0.86, "me_if_loss": 0.55,
+           "rival_ahead": 0.5}
+
+    def test_rows_rank_by_power_with_moves_trends_and_markers(self):
+        prev = {2: 0, 1: 2, 3: 1, 4: 3}      # we were 3rd yesterday, Joe Po 2nd
+        rows = report.league_rows(self.POWER, prev, self.REC, self.SIM, self.NAMES, 1, 2)
+        self.assertEqual(rows[0], ["1 –", "The Godfather 👑", "0-1", "2,054", "2,407🔥", "78%"])
+        self.assertEqual(rows[1][:3], ["2 ▲1", "**Us Team**", "1-0"])
+        self.assertEqual(rows[2][4], "1,500🧊")
+        self.assertEqual(rows[2][0], "3 ▼1")
+        self.assertEqual(rows[3][2], "1-0-1")
+
+    def test_summary_line_flags_a_must_win(self):
+        line = report.league_summary(self.SIM, 1, self.NAMES, 2, [(3, 0.7), (4, 0.79)])
+        self.assertEqual(line, "**Us** · playoffs 77% (86% with a win, 55% with a loss 🎯 must-win) · #1 seed 28% · "
+                               "The Godfather ahead of us 50% · next: Joe Po 70%, eyeBALL 79%")
+
+    def test_summary_without_a_big_swing_or_rival(self):
+        sim = {**self.SIM, "me_if_win": 0.80, "me_if_loss": 0.75, "rival_ahead": None}
+        line = report.league_summary(sim, 1, self.NAMES, None, [])
+        self.assertNotIn("must-win", line)
+        self.assertEqual(line, "**Us** · playoffs 77% (80% with a win, 75% with a loss) · #1 seed 28%")
+
+    def test_nickname(self):
+        self.assertEqual([report.nickname(n) for n in ("Joe Po Knows Ball", "The Godfather", "eyeBALL", "Hart of the Garden")],
+                         ["Joe Po", "The Godfather", "eyeBALL", "Hart"])
+
+
 if __name__ == "__main__":
     unittest.main()
