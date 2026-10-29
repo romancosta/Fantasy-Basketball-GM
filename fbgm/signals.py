@@ -89,7 +89,7 @@ def estimate(form, trend, avg_min, stars_out):
     return best, why
 
 
-def opportunities(lg, season, n=5):
+def opportunities(lg, season, n=None):
     """Free agents whose role may be growing: [(player, uplift FP/G, why, trend, stars out)] best first."""
     pool = sorted((p for p in lg.free_agents if p.status == "FREEAGENT" and p.gp > 0
                    and p.availability >= POLICY["add_min_availability"]), key=lambda p: -p.form)[:POLICY["signal_pool"]]
@@ -105,4 +105,4 @@ def opportunities(lg, season, n=5):
         gain, why = estimate(p.form, trend, avg_min, stars_out)
         if gain >= POLICY["signal_min_uplift"]:
             out.append((p, gain, why, trend, [q for q in stars]))
-    return sorted(out, key=lambda r: -r[1])[:n]
+    return sorted(out, key=lambda r: -r[1])[:n or POLICY["signal_show"]]
