@@ -117,6 +117,10 @@ Prints the finished report in markdown; the reader only replaces `{{OVERVIEW}}` 
   the next three opponents, and the chance The Godfather finishes ahead of us. "ESPN says" is ESPN's own simulation as a sanity
   check. ASSUMED, not verified: seeding by overall record with ties broken by fewer points against (ESPN's rule is labelled
   only "total points against"); divisions (East/West) are not modelled.
+- **Schedule look-ahead** (`fbgm/lookahead.py`): games per player for the rest of this week and the next 3, marked ▲/▼ for
+  heavy/light weeks against the league average, plus our lineup's starts and projected FP against each week's opponent
+  (their roster too). Uses today's injury statuses (OUT = 0 in every week). Each recommended move also lists the add's vs
+  the drop's games over the next 3 weeks. Informational only: it does not change which moves are recommended.
 - **Power rankings** (FP/week): results (season pace 60% / last 7 days 40%) weighted days/(days+21) against roster
   strength (current roster on current form x league games per week), plus 25 FP per game over .500. Arrows compare
   with the ranking as of yesterday (same rosters, one day less of results).
