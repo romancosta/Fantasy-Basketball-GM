@@ -109,20 +109,22 @@ Prints the finished report in markdown; the reader only replaces `{{OVERVIEW}}` 
   agent adds 10+ FP tonight AND a flex-pool player who isn't starting tonight can be cut for him (core players, idle or injured, are never offered); at-risk starters are
   only listed when someone could cover; tiny reshuffles are ignored. Changes are only possible for games not yet started.
   Scheduled by docs/pretip-routine.md.
-- **Season picture** (`fbgm/season.py`): standings from completed weeks, and playoff odds from 4,000 simulations of every
+- **Playoff odds** (`fbgm/season.py`, shown in the League table): standings from completed weeks, and playoff odds from 4,000 simulations of every
   remaining week (21 regular-season weeks, top 4 of 8 make the playoffs; ESPN lists playoff weeks 22-23). Team strength =
   power-rankings strength without the record bonus, pulled toward the league mean early in the season, with a weekly score
   spread and an uncertainty about each team's true strength that both shrink as weeks are played. This week's win chance is
   pinned to the nightly's simulation. Shows the odds with a win vs a loss this week (🎯 Must-win when the gap is 15+ pts),
-  the next three opponents, and the chance The Godfather finishes ahead of us. "ESPN says" is ESPN's own simulation as a sanity
-  check. ASSUMED, not verified: seeding by overall record with ties broken by fewer points against (ESPN's rule is labelled
+  the next three opponents, and the chance The Godfather finishes ahead of us. (ESPN's own simulation is no longer shown;
+  it differed a lot early on.) ASSUMED, not verified: seeding by overall record with ties broken by fewer points against (ESPN's rule is labelled
   only "total points against"); divisions (East/West) are not modelled.
 - **Compact report**: the nightly is a quick read. One **Matchup** grid holds last night's projected → actual, today's projection, the
   week so far, the week projection with margin, and the change since yesterday's projection (split into last night's miss and the
   rest of the week); the win chance line also shows yesterday's figure. **News** shows only one-game rulings, rest talk in a
   player's own news (with his back-to-back odds), and fresh status news for players at 30+ FP/G; plain back-to-back odds are in the
   projections but not listed. IR watch is one line per player (the headline only when the date moved). Footnotes are one line.
-  Opportunity watch shows 3. The schedule look-ahead (below) is off by default (`report_lookahead`).
+  Opportunity watch shows 3. A single **League** table (power order with move since yesterday, record, power, last-7 trend,
+  playoff odds) plus one summary line (our odds with a win vs a loss and the must-win flag, #1 seed, The Godfather ahead of us,
+  next three opponents) replaces the separate Season picture and Power rankings sections. The schedule look-ahead (below) is off by default (`report_lookahead`).
 - **Schedule look-ahead** (`fbgm/lookahead.py`, hidden unless `report_lookahead` is on): games per player for the rest of this week and the next 3, marked ▲/▼ for
   heavy/light weeks against the league average, plus our lineup's starts and projected FP against each week's opponent
   (their roster too). Uses today's injury statuses (OUT = 0 in every week). Each recommended move also lists the add's vs
@@ -137,7 +139,7 @@ Prints the finished report in markdown; the reader only replaces `{{OVERVIEW}}` 
   flag, and the winner when the week ended). A snapshot and actuals file with the same date form one scored day. Both are kept for
   200 days. `python3 -m fbgm accuracy` shows how many scored days exist; the review itself (bias, calibration, rest hit rate)
   starts once `accuracy_min_days` (14) are captured.
-- **Power rankings** (FP/week): results (season pace 60% / last 7 days 40%) weighted days/(days+21) against roster
+- **Power rankings** (FP/week, the League table's Power column): results (season pace 60% / last 7 days 40%) weighted days/(days+21) against roster
   strength (current roster on current form x league games per week), plus 25 FP per game over .500. Arrows compare
   with the ranking as of yesterday (same rosters, one day less of results).
 
