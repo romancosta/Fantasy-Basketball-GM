@@ -121,6 +121,11 @@ Prints the finished report in markdown; the reader only replaces `{{OVERVIEW}}` 
   heavy/light weeks against the league average, plus our lineup's starts and projected FP against each week's opponent
   (their roster too). Uses today's injury statuses (OUT = 0 in every week). Each recommended move also lists the add's vs
   the drop's games over the next 3 weeks. Informational only: it does not change which moves are recommended.
+- **Opportunity watch** (`fbgm/signals.py`, backtested by `tools/backtest_signals.py` on 2025-26 game logs): free agents whose
+  role may be growing. Two signals, taking the larger rather than adding them: a minutes surge (last 5 games +5 mpg over the
+  10 before; players kept ~66% of the jump next 5 games and beat baseline by ~19%), or a star teammate (rate 40+) who is out
+  (bench players scored ~27% more without a star, rotation players ~12%; constants are shaded down in config). Shows the top 5
+  with an estimated FP/G uplift. Informational only: it does not feed `advise` or the move ranking.
 - **Power rankings** (FP/week): results (season pace 60% / last 7 days 40%) weighted days/(days+21) against roster
   strength (current roster on current form x league games per week), plus 25 FP per game over .500. Arrows compare
   with the ranking as of yesterday (same rosters, one day less of results).

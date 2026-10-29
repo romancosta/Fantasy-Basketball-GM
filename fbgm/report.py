@@ -4,10 +4,10 @@ import datetime as dt
 import io
 import re
 
-from . import espn, health, lookahead, season, tracking
+from . import espn, health, lookahead, season, signals, tracking
 from .config import BENCH, CONFIG, DECIDED_LABEL, IR, OUTLOOK, POLICY
 from .fmt import inj, short_name, table
-from .gm import move_tag, plan_moves
+from .gm import move_tag, plan_moves, pos
 from .model import hungarian_max
 
 
@@ -382,6 +382,26 @@ def lookahead_section(lg):
           "daily lineups; a player who is OUT counts as 0 in every week._")
 
 
+def opportunity_section(lg):
+    """Free agents whose role may be growing (minutes surge, or a star teammate is out). Informational: the move
+    recommendations above do not use it."""
+    found = signals.opportunities(lg, CONFIG["season"])
+    if not found:
+        return
+    print("\n## Opportunity watch")
+    for pl, gain, why, trend, stars in found:
+        out = ", ".join(f"{short_name(q.name)} ({q.injury.replace('_', '-').title()})" for q in stars)
+        bits = [why]
+        if stars and "star" not in why:
+            bits.append(f"{out} out")
+        elif stars:
+            bits = [f"{out} out"]
+        print(f"- **{pl.name}** ({pos(pl)}, {lg.pro_abbrev[pl.pro_team]}, form {pl.form:.1f}): about **+{gain:.0f} FP/G** "
+              f"possible · " + " · ".join(bits) + f" · {pl.owned:.0f}% owned{inj(pl)}")
+    print("\n_Backtest on 2025-26 game logs: players keep about two thirds of a minutes surge, and bench players score ~27% "
+          "more when a star teammate is out. Estimates are deliberately shaded down; this is a watch list, not a move._")
+
+
 def power_rankings_section(lg, me):
     print("\n## Power rankings")
     now = lg.power_rankings()
@@ -468,6 +488,8 @@ def nightly_body(lg, a):
         news_section(lg, me, opp)
     with health.section("Roster moves"):
         roster_moves(lg, a, decided)
+    with health.section("Opportunity watch"):
+        opportunity_section(lg)
     with health.section("Snapshot save", quiet=True):
         tracking.save_snapshot(lg, proj, today, p, (me, opp))
     with health.section("Power rankings"):
