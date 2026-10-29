@@ -3,6 +3,7 @@
 Notable changes to the nightly report and tooling. Newest first.
 
 ## Unreleased
+- Compact nightly: one Matchup grid (night, today, week, change since yesterday); News limited to significant items; IR watch one line; look-ahead off by default; shorter footnotes; 3 opportunities.
 - Accuracy data capture (M6, part 1): snapshots v2, daily actuals files, 200-day retention, `fbgm accuracy` status. The review itself comes after ~14 scored days.
 - Opportunity watch (M5): free agents with a minutes surge or a star teammate out, backed by a backtest tool. Informational only.
 - Schedule look-ahead (M4): games per player and lineup FP vs each opponent for the next 3 weeks; moves show next-3-week games.

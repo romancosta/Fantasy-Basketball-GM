@@ -117,7 +117,13 @@ Prints the finished report in markdown; the reader only replaces `{{OVERVIEW}}` 
   the next three opponents, and the chance The Godfather finishes ahead of us. "ESPN says" is ESPN's own simulation as a sanity
   check. ASSUMED, not verified: seeding by overall record with ties broken by fewer points against (ESPN's rule is labelled
   only "total points against"); divisions (East/West) are not modelled.
-- **Schedule look-ahead** (`fbgm/lookahead.py`): games per player for the rest of this week and the next 3, marked ▲/▼ for
+- **Compact report**: the nightly is a quick read. One **Matchup** grid holds last night's projected → actual, today's projection, the
+  week so far, the week projection with margin, and the change since yesterday's projection (split into last night's miss and the
+  rest of the week); the win chance line also shows yesterday's figure. **News** shows only one-game rulings, rest talk in a
+  player's own news (with his back-to-back odds), and fresh status news for players at 30+ FP/G; plain back-to-back odds are in the
+  projections but not listed. IR watch is one line per player (the headline only when the date moved). Footnotes are one line.
+  Opportunity watch shows 3. The schedule look-ahead (below) is off by default (`report_lookahead`).
+- **Schedule look-ahead** (`fbgm/lookahead.py`, hidden unless `report_lookahead` is on): games per player for the rest of this week and the next 3, marked ▲/▼ for
   heavy/light weeks against the league average, plus our lineup's starts and projected FP against each week's opponent
   (their roster too). Uses today's injury statuses (OUT = 0 in every week). Each recommended move also lists the add's vs
   the drop's games over the next 3 weeks. Informational only: it does not change which moves are recommended.
