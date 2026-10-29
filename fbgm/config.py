@@ -121,6 +121,8 @@ POLICY = {
     "signal_star_rate": 40.0,
     "signal_min_uplift": 3.0,
     "signal_pool": 40,
+    # Accuracy review: scored days (snapshot + actual results for the same date) needed before it reports anything.
+    "accuracy_min_days": 14,
     "decided_win": 0.99,
     "decided_loss": 0.01,
 }

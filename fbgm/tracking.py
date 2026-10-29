@@ -5,9 +5,11 @@ import os
 import re
 
 from . import health
-from .config import IR, POLICY
+from .config import BENCH, IR, POLICY
 
 STATE_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "state")
+SNAPSHOT_VERSION = 2     # 2: players carry avail and rest; snapshots name me/opp; actuals files exist
+KEEP_DAYS = 200
 
 
 def _load(name):
@@ -43,20 +45,72 @@ def save_snapshot(lg, proj, today, win_prob, teams):
     started = any(lg.locked(p, lg.today) for t in teams for p in lg.roster(t))
     if started and load_snapshot(lg.today):
         return
-    snap = {"date": str(lg.today), "period": lg.matchup_period, "win_prob": win_prob, "teams": {}}
+    snap = {"version": SNAPSHOT_VERSION, "date": str(lg.today), "period": lg.matchup_period, "win_prob": win_prob,
+            "me": teams[0], "opp": teams[1] if len(teams) > 1 else None, "teams": {}}
     for tid in teams:
         _, lineup = lg.day_projection(lg.roster(tid), lg.today)
         players = {}
         for pl in lg.roster(tid):
             if pl.lineup_slot != IR and lg.plays(pl, lg.today) and pl.expected > 0:
                 players[pl.name] = {"proj": round(pl.expected * lg.rest_factor(pl, lg.today), 1),
-                                    "lineup": pl in lineup}
+                                    "lineup": pl in lineup, "avail": pl.availability,
+                                    "rest": round(lg.rest_chance(pl, lg.today), 3)}
         snap["teams"][str(tid)] = {"week": round(proj[tid][0], 1), "day": round(today[tid], 1), "players": players}
     _save(snapshot_name(lg.today), snap)
-    # Keep the state folder small: only the last few weeks of snapshots matter.
-    old = sorted(f for f in os.listdir(STATE_DIR) if f.startswith("snapshot-"))[:-30]
-    for f in old:
+    prune("snapshot-")
+
+
+def prune(prefix, keep=KEEP_DAYS):
+    """Keep the newest `keep` files with this prefix; the accuracy review wants the whole season, which is small."""
+    for f in sorted(f for f in os.listdir(STATE_DIR) if f.startswith(prefix))[:-keep]:
         os.remove(os.path.join(STATE_DIR, f))
+
+
+# ---- actual results (the other half of projected vs actual) ----------------------
+def actuals_name(day):
+    return f"actuals-{day}.json"
+
+
+def load_actuals(day):
+    return _load(actuals_name(day))
+
+
+def save_actuals(rec):
+    """Record what really happened on rec['day'] (the recap for that day): each team's points, every player who scored
+    (starter or bench), and, when the week ended that day, who won. Pairs with snapshot-<day>.json, taken that
+    morning, so projected vs actual can be scored for the whole season. Idempotent: same day, same data."""
+    final = rec["final"]
+    sides = rec["sides"]
+    data = {"version": SNAPSHOT_VERSION, "date": str(rec["day"]), "period": rec["period"], "final": final,
+            "teams": {}, "winner": None}
+    for side in sides:
+        data["teams"][str(side["tid"])] = {
+            "day": round(side["day_pts"], 1), "total": round(side["total"], 1),
+            "players": {name: {"pts": round(pts, 1), "bench": slot == BENCH} for slot, name, pts, _, _ in side["players"]}}
+    if final and sides[0]["total"] != sides[1]["total"]:
+        data["winner"] = max(sides, key=lambda s: s["total"])["tid"]
+    _save(actuals_name(rec["day"]), data)
+    prune("actuals-")
+
+
+def capture_status():
+    """(snapshot dates, actuals dates, dates with both) as sorted ISO strings: how much data the accuracy review has."""
+    files = sorted(os.listdir(STATE_DIR)) if os.path.isdir(STATE_DIR) else []
+    snaps = [f[len("snapshot-"):-len(".json")] for f in files if f.startswith("snapshot-")]
+    acts = [f[len("actuals-"):-len(".json")] for f in files if f.startswith("actuals-")]
+    return snaps, acts, sorted(set(snaps) & set(acts))
+
+
+def cmd_accuracy(a):
+    """Status of the projected-vs-actual data (the scoring itself comes once enough days are captured)."""
+    snaps, acts, both = capture_status()
+    print(f"Projection snapshots: {len(snaps)}" + (f" ({snaps[0]} to {snaps[-1]})" if snaps else ""))
+    print(f"Actual results: {len(acts)}" + (f" ({acts[0]} to {acts[-1]})" if acts else ""))
+    print(f"Days with both (can be scored): {len(both)}")
+    need = POLICY["accuracy_min_days"]
+    if len(both) < need:
+        print(f"Not enough data yet: the accuracy review needs {need}+ scored days (about {need - len(both)} more).")
+    return 0
 
 
 # ---- IR return watch ----------------------------------------------------------
