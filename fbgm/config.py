@@ -110,6 +110,17 @@ POLICY = {
     # Look-ahead: weeks to show after this one, and how far from the league-average games a week must be to get a mark.
     "lookahead_weeks": 3,
     "lookahead_flag": 0.6,
+    # Opportunity signals (tools/backtest_signals.py, 2025-26): after a +5 mpg minutes surge players keep ~66% of the
+    # jump; bench players (12-24 mpg) score ~1.27x and rotation players (24-32 mpg) ~1.12x without a star teammate. Shrunk a
+    # little below the measured values.
+    "signal_surge_min_gain": 5.0,
+    "signal_surge_keep": 0.60,
+    "signal_surge_scale": 0.5,    # form (last-15) already contains the 5-game surge, so only about half the jump is new
+    "signal_out_bench": 1.20,
+    "signal_out_rotation": 1.10,
+    "signal_star_rate": 40.0,
+    "signal_min_uplift": 3.0,
+    "signal_pool": 40,
     "decided_win": 0.99,
     "decided_loss": 0.01,
 }
