@@ -107,6 +107,9 @@ POLICY = {
     # Early-season ratings are pulled toward the league mean by this share, fading the same way.
     "season_regress": 0.5,
     "season_must_win_swing": 0.15,
+    # Look-ahead: weeks to show after this one, and how far from the league-average games a week must be to get a mark.
+    "lookahead_weeks": 3,
+    "lookahead_flag": 0.6,
     "decided_win": 0.99,
     "decided_loss": 0.01,
 }

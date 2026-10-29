@@ -4,7 +4,7 @@ import datetime as dt
 import io
 import re
 
-from . import espn, health, season, tracking
+from . import espn, health, lookahead, season, tracking
 from .config import BENCH, CONFIG, DECIDED_LABEL, IR, OUTLOOK, POLICY
 from .fmt import inj, short_name, table
 from .gm import move_tag, plan_moves
@@ -280,6 +280,10 @@ def roster_moves(lg, a, decided):
         print(f"- **+{add.name} / −{drop.name}**{move_tag(lg, r, flex)}: **{wk:+.0f} FP this week** · "
               f"form {add.form:.1f} vs {drop.form:.1f} · {len(starts)} start{'s' * (len(starts) != 1)}"
               f"{' · waivers' if add.status == 'WAIVERS' else ''}{inj(add)}")
+        ahead = range(1, POLICY["lookahead_weeks"] + 1)
+        print(f"  - Games in the next {len(ahead)} weeks: +{short_name(add.name)} "
+              + "/".join(str(lookahead.player_games(lg, add, o)) for o in ahead)
+              + f" vs −{short_name(drop.name)} " + "/".join(str(lookahead.player_games(lg, drop, o)) for o in ahead))
     if alts:
         print("  - Backups: " + ", ".join(f"+{r[2].name} ({r[0]:+.0f})" for r in alts))
     if plan:
@@ -347,6 +351,35 @@ def season_section(lg, p_me):
         print("\n**Next**: " + " · ".join(parts))
     print("\n_Odds simulate every remaining week from team strength (results + roster). Playoff seeding assumes overall record, "
           "ties broken by fewer points against; division rules are not modelled. 'ESPN says' is ESPN's own simulation._")
+
+
+def lookahead_section(lg):
+    """Our lineup's games and projected FP over the coming weeks against each week's opponent, and each player's games."""
+    me = CONFIG["my_team_id"]
+    n = POLICY["lookahead_weeks"]
+    opps = lookahead.opponents_by_week(lg.raw["schedule"], me, lg.matchup_period, n)
+    mine = lookahead.active_roster(lg)
+    print(f"\n## Schedule look-ahead · next {n} weeks")
+    rows = []
+    for off in range(n + 1):
+        starts, fp = lookahead.team_week(lg, mine, off)
+        opp = opps.get(off)
+        o_starts, o_fp = lookahead.team_week(lg, lookahead.active_roster(lg, opp), off) if opp else (0, 0.0)
+        label = "This week (left)" if off == 0 else f"Wk {lg.matchup_period + off}"
+        gap = fp - o_fp
+        rows.append([label, lg.team_names[opp] if opp else "-", f"{starts}", f"{fp:,.0f}", f"{o_starts}", f"{o_fp:,.0f}",
+                     f"{gap:+,.0f}", f"{lookahead.league_avg_games(lg, off):.1f}"])
+    table(["Week", "Opponent", "Our starts", "Our FP", "Opp starts", "Opp FP", "Edge", "Avg games"], rows, text_cols=2)
+    head = ["Player"] + ["Left" if o == 0 else f"Wk {lg.matchup_period + o}" for o in range(n + 1)]
+    avgs = [lookahead.league_avg_games(lg, o) for o in range(n + 1)]
+    prow = []
+    for pl in sorted(mine, key=lambda p: -p.rate)[:12]:
+        prow.append([pl.name + inj(pl)] + [lookahead.mark(lookahead.player_games(lg, pl, o), avgs[o])
+                                           for o in range(n + 1)])
+    print()
+    table(head, prow)
+    print("\n_Games per player (▲ heavy / ▼ light week vs the league average). FP uses today's injury statuses and the best "
+          "daily lineups; a player who is OUT counts as 0 in every week._")
 
 
 def power_rankings_section(lg, me):
@@ -427,6 +460,8 @@ def nightly_body(lg, a):
 
     with health.section("Season picture"):
         season_section(lg, p)
+    with health.section("Schedule look-ahead"):
+        lookahead_section(lg)
     with health.section("IR watch"):
         ir_section(lg)
     with health.section("News & rest watch"):
