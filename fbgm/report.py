@@ -130,105 +130,145 @@ def bench_alert(lg, rec):
 NEWSY = re.compile(r"injur|questionable|doubtful|probable|\bout\b|ruled|rest|back-to-back|return|available|status|"
                    r"listed|restriction|start|bench|suspend|trade|sign|waive|day-to-day|game-time|sidelined|miss|"
                    r"absence|illness|sore|strain|sprain|surgery|mri|g league", re.I)
+# A back-to-back only makes the report when the player's own news raises rest (not on the odds alone).
+REST_TALK = re.compile(r"\brest(?:ing|ed)?\b|load management|maintenance|back-to-back|night off|could sit|may sit|"
+                       r"might sit|sit out", re.I)
 
 
 def news_section(lg, me, opp):
-    """Back-to-back rest risks this week (plus the night after, for a Sun-Mon pair) and fresh status news, for
-    our roster and the opponent's."""
+    """Significant news only: one-game rulings, rest talk in a player's own news (with his back-to-back odds), and fresh
+    status news for rotation players. Plain back-to-back odds are already in the projections and are not shown."""
     days = lg.remaining_days() + [lg.week_days[-1] + dt.timedelta(days=1)]
     cutoff = lg.now - dt.timedelta(hours=POLICY["news_hours"])
-    rest, news = [], []
+    lines = []
     for tid, tag in ((me, "us"), (opp, "opp")):
         for p in sorted(lg.roster(tid), key=lambda p: -p.rate):
-            if p.lineup_slot == IR:
+            if p.lineup_slot == IR or p.rate < POLICY["news_min_rate"]:
                 continue
             ruling = lg.game_ruling(p)
-            ruled = ruling[0] if ruling else None
             if ruling:
                 after = "active" if ruling[1] == "rest" else "day-to-day"
-                rest.append(f"- 🛌 **{p.name}** ({tag}) ruled out {ruled:%a} ({ruling[1]}) · counted as sitting {ruled:%a} "
-                            f"only, {after} after")
-            risky = [(d, lg.rest_chance(p, d)) for d in days if d != ruled]
-            risky = [(d, c) for d, c in risky if c >= POLICY["rest_flag"]]
-            if risky:
-                pr = lg.rest_profile(p)
-                legs = " · ".join(f"{d:%a} {c:.0%}" for d, c in risky)
-                rest.append(f"- 💤 **{p.name}** ({tag}) back-to-back: chance he sits {legs} "
-                            f"(sat {pr['sat1']} first / {pr['sat2']} second legs of {pr['b2b']} healthy B2Bs)")
-            item = None if ruling else next((n for n in lg.news(p) if NEWSY.search(n.get("headline", ""))), None)
-            if item and dt.datetime.fromisoformat(item["published"].replace("Z", "+00:00")) >= cutoff:
+                lines.append(f"- 🛌 **{p.name}** ({tag}) ruled out {ruling[0]:%a} ({ruling[1]}); {after} after")
+                continue
+            latest = lg.news(p)[:1]
+            item = next((n for n in lg.news(p) if NEWSY.search(n.get("headline", ""))), None)
+            fresh = item and dt.datetime.fromisoformat(item["published"].replace("Z", "+00:00")) >= cutoff
+            if latest and REST_TALK.search(f"{latest[0].get('headline', '')} {latest[0].get('story', '')}") and fresh:
+                legs = " · ".join(f"{d:%a} {c:.0%}" for d in days if (c := lg.rest_chance(p, d)) >= POLICY["rest_flag"])
+                lines.append(f"- 💤 **{p.name}** ({tag}): rest in the news{f' · back-to-back sit odds {legs}' if legs else ''}")
+            elif fresh:
                 head = item["headline"]
-                news.append(f"- 📰 **{p.name}** ({tag}): {head if len(head) <= 160 else head[:157] + '...'}")
-    print("\n## News & rest watch")
-    for line in rest + news or ["- Nothing new."]:
-        print(line)
-    if rest:
-        print("- Rest odds are already in the projections; check news before lock on those nights.")
+                lines.append(f"- 📰 **{p.name}** ({tag}): {head if len(head) <= 140 else head[:137] + '...'}")
+    if lines:
+        print("\n## News")
+        for line in lines:
+            print(line)
 
 
 def delta(x):
     return f"{x:+,.0f}"
 
 
-def vs_projection(lg, rec, snap, me, opp):
-    """Last night's projected vs actual. snap: the morning snapshot for that day (None -> rebuilt from today's data)."""
+def night_compare(lg, rec, snap):
+    """Last night's projection vs the actual, per team: ({tid: {proj, actual, players}}, rebuilt). The projection comes
+    from the morning snapshot for that day; with none it is rebuilt from today's rosters (rebuilt=True)."""
     day = rec["day"]
-    rebuilt = snap is None
-    teams = {}
+    out = {}
     for side in rec["sides"]:
         tid = side["tid"]
-        if rebuilt:
-            tot, lineup = lg.day_projection(lg.roster(tid), day)
+        if snap is None:
+            total, lineup = lg.day_projection(lg.roster(tid), day)
             players = {pl.name: {"proj": round(pl.expected * lg.rest_factor(pl, day), 1), "lineup": True}
                        for pl in lineup}
-            teams[tid] = {"day": tot, "week": None, "players": players}
         else:
-            teams[tid] = {**snap["teams"][str(tid)]}
-    print(f"\n## {day:%a} projected vs actual" + (" (rebuilt from current rosters; no snapshot saved)" if rebuilt else ""))
-    rows = []
-    for side in rec["sides"]:
-        t = teams[side["tid"]]
-        rows.append([lg.team_names[side["tid"]], f"{t['day']:,.0f}", f"{side['day_pts']:,.0f}",
-                     f"**{delta(side['day_pts'] - t['day'])}**"])
-    table(["Team", "Projected", "Actual", "Δ"], rows)
-    # Biggest player misses on our side: lineup players vs what the snapshot expected (DNP counts as 0).
+            total, players = snap["teams"][str(tid)]["day"], snap["teams"][str(tid)]["players"]
+        out[tid] = {"proj": total, "actual": side["day_pts"], "players": players}
+    return out, snap is None
+
+
+def night_cell(c, rebuilt):
+    return f"{'~' if rebuilt else ''}{c['proj']:,.0f} → {c['actual']:,.0f} ({delta(c['actual'] - c['proj'])})"
+
+
+def miss_line(rec, compare, me):
+    """Our biggest lineup misses against the projection (a no-show counts as 0), or ''."""
     ours = {p[1]: p[2] for p in rec["sides"][0]["players"] if p[0] not in (BENCH, IR)}
-    diffs = [(ours.get(n, 0.0) - v["proj"], n, v["proj"], ours.get(n, 0.0))
-             for n, v in teams[me]["players"].items() if v["lineup"]]
-    diffs.sort()
+    diffs = sorted((ours.get(n, 0.0) - v["proj"], n, v["proj"], ours.get(n, 0.0))
+                   for n, v in compare[me]["players"].items() if v["lineup"])
+
     def fmt(d):
-        return f"{short_name(d[1])} {d[3]:.0f} vs {d[2]:.0f} proj ({delta(d[0])}{', DNP' if d[1] not in ours else ''})"
+        return f"{short_name(d[1])} {d[3]:.0f} vs {d[2]:.0f}{' (DNP)' if d[1] not in ours else ''}"
     under = [d for d in diffs if d[0] <= -8][:3]
     over = [d for d in reversed(diffs) if d[0] >= 8][:3]
-    if under or over:
-        print("\n" + " · ".join(x for x in (
-            "**Under** " + ", ".join(fmt(d) for d in under) if under else "",
-            "**Over** " + ", ".join(fmt(d) for d in over) if over else "") if x))
-    return teams
+    parts = ([f"under: {', '.join(fmt(d) for d in under)}"] if under else []) + \
+            ([f"over: {', '.join(fmt(d) for d in over)}"] if over else [])
+    return "**Vs projection** · " + " · ".join(parts) if parts else ""
 
 
-def week_delta(lg, rec, snap, teams_proj, p_now, me, opp):
-    """Week total projection and win chance: yesterday morning's vs now (or vs the final score on Mondays)."""
+def vs_yesterday(snap, rec, tid, now, compare):
+    """Change in the week total against what yesterday morning's snapshot projected, split into last night's miss and
+    the re-projection of what's left: '+350 (+28 night, +322 rest)'. '-' when there is no comparable snapshot."""
     if snap is None or snap["period"] != rec["period"]:
-        return
-    final = rec["final"]
-    print(f"\n## Week {rec['period']} {'result' if final else 'projection'}: {snap['date']} morning vs " +
-          ("final" if final else "now"))
+        return "-"
+    change = now - snap["teams"][str(tid)]["week"]
+    if rec["final"]:
+        return delta(change)
+    miss = compare[tid]["actual"] - compare[tid]["proj"]
+    return f"{delta(change)} ({delta(miss)} night, {delta(change - miss)} rest)"
+
+
+def last_night_lines(lg, rec, compare, me):
+    print("\n" + top_line(lg, rec))
+    misses = miss_line(rec, compare, me)
+    if misses:
+        print("\n" + misses)
+    alert = bench_alert(lg, rec)
+    if alert:
+        print("\n" + alert)
+
+
+def matchup_section(lg, rec, snap, proj, today, me, opp):
+    """One grid for the week: last night's projection vs actual, today's projection, the week so far, the week
+    projection with margin, and how that moved since yesterday."""
+    names = [lg.team_names[me], lg.team_names[opp]]
+    print(f"\n## Matchup · Week {lg.matchup_period} vs {names[1]}")
+    margins = scored([proj[me][0], proj[opp][0]])
+    head = ["Team"] + ([f"{rec['day']:%a} proj → actual"] if rec else []) + [f"{lg.today:%a} proj", "Week so far",
+                                                                           "Week proj (margin)"]
+    if rec:
+        head.append("Vs yesterday's proj")
+        compare, rebuilt = night_compare(lg, rec, snap)
     rows = []
-    for i, side in enumerate(rec["sides"]):
-        tid = side["tid"]
-        t = snap["teams"][str(tid)]
-        now = side["total"] if final else teams_proj[tid][0]
-        miss = side["day_pts"] - t["day"]
-        rest = (now - t["week"]) - miss
-        why = "" if final else f"{delta(miss)} last night, {delta(rest)} rest of week"
-        rows.append([lg.team_names[tid], f"{t['week']:,.0f}", f"{now:,.0f}", f"**{delta(now - t['week'])}**", why])
-    table(["Team", "Yesterday proj", "Final" if final else "Today proj", "Δ", "From"], rows)
-    if not final:
-        before = snap["win_prob"]
-        print(f"\n**Win chance** {before:.0%} → {p_now:.0%} ({p_now - before:+.0%}) · margin "
-              f"{delta(snap['teams'][str(me)]['week'] - snap['teams'][str(opp)]['week'])} → "
-              f"{delta(teams_proj[me][0] - teams_proj[opp][0])}")
+    for i, tid in enumerate((me, opp)):
+        row = [names[i]]
+        if rec:
+            row.append(night_cell(compare[tid], rebuilt))
+        row += [f"{today[tid]:,.0f}", f"{proj[tid][1]:,.0f}", margins[i]]
+        if rec:
+            row.append(vs_yesterday(snap, rec, tid, proj[tid][0], compare))
+        rows.append(row)
+    table(head, rows)
+    if rec:
+        last_night_lines(lg, rec, compare, me)
+
+
+def week_final_section(lg, rec, snap, proj, today, me, opp):
+    """Monday: last week's result (with how it compared to Sunday's projection), then the new week's preview."""
+    a_, b_ = rec["sides"]
+    won = a_["total"] > b_["total"]
+    lost = a_["total"] < b_["total"]
+    print(f"\n## Week {rec['period']} final {'🏆 WON' if won else '❌ LOST' if lost else '🤝 TIED'}")
+    compare, rebuilt = night_compare(lg, rec, snap)
+    cells = scored([a_["total"], b_["total"]])
+    icons = ("🏆", "❌") if won else ("❌", "🏆") if lost else ("🤝", "🤝")
+    rows = [[f"{icons[i]} {lg.team_names[s['tid']]}", night_cell(compare[s["tid"]], rebuilt), cells[i],
+             vs_yesterday(snap, rec, s["tid"], s["total"], compare)] for i, s in enumerate(rec["sides"])]
+    table(["Team", f"{rec['day']:%a} proj → actual", "Final (margin)", "Vs Sunday's week proj"], rows)
+    last_night_lines(lg, rec, compare, me)
+    print(f"\n## Week {lg.matchup_period} preview · vs {lg.team_names[opp]}")
+    margins = scored([proj[me][0], proj[opp][0]])
+    table(["Team", f"{lg.today:%a} proj", "Week proj (margin)"],
+          [[lg.team_names[tid], f"{today[tid]:,.0f}", margins[i]] for i, tid in enumerate((me, opp))])
 
 
 def ir_section(lg):
@@ -258,9 +298,9 @@ def ir_section(lg):
             line = (f"- ⚠️ **{pl.name}** (rate {pl.rate:.1f}): return {'PUSHED BACK' if s_ > 0 else 'MOVED UP'} "
                     f"{abs(s_)}d, from {it['prev']:%b %-d} to {it['est']:%b %-d} ({it['days']}d out) · first game **{first}**")
         if it["near"]:
-            spot = f" Likely spot to clear: {flex[0].name} (rate {flex[0].rate:.1f})." if flex else ""
-            line += f"\n  - Move him off IR before tip-off; the roster needs an open spot.{spot}"
-        line += f"\n  - Latest: {it['headline'][:200]} ({it['published']:%b %-d})"
+            line += f" · needs a roster spot{f' (clear {short_name(flex[0].name)})' if flex else ''}"
+        if it["shift"]:
+            line += f"\n  - Latest: {it['headline'][:160]} ({it['published']:%b %-d})"
         print(line)
 
 
@@ -280,10 +320,11 @@ def roster_moves(lg, a, decided):
         print(f"- **+{add.name} / −{drop.name}**{move_tag(lg, r, flex)}: **{wk:+.0f} FP this week** · "
               f"form {add.form:.1f} vs {drop.form:.1f} · {len(starts)} start{'s' * (len(starts) != 1)}"
               f"{' · waivers' if add.status == 'WAIVERS' else ''}{inj(add)}")
-        ahead = range(1, POLICY["lookahead_weeks"] + 1)
-        print(f"  - Games in the next {len(ahead)} weeks: +{short_name(add.name)} "
-              + "/".join(str(lookahead.player_games(lg, add, o)) for o in ahead)
-              + f" vs −{short_name(drop.name)} " + "/".join(str(lookahead.player_games(lg, drop, o)) for o in ahead))
+        if POLICY["report_lookahead"]:
+            ahead = range(1, POLICY["lookahead_weeks"] + 1)
+            print(f"  - Games in the next {len(ahead)} weeks: +{short_name(add.name)} "
+                  + "/".join(str(lookahead.player_games(lg, add, o)) for o in ahead)
+                  + f" vs −{short_name(drop.name)} " + "/".join(str(lookahead.player_games(lg, drop, o)) for o in ahead))
     if alts:
         print("  - Backups: " + ", ".join(f"+{r[2].name} ({r[0]:+.0f})" for r in alts))
     if plan:
@@ -349,8 +390,7 @@ def season_section(lg, p_me):
             p = season.ND.cdf((strength[me] - strength[opp]) / spread)
             parts.append(f"wk {wk} {lg.team_names[opp]} {p:.0%}")
         print("\n**Next**: " + " · ".join(parts))
-    print("\n_Odds simulate every remaining week from team strength (results + roster). Playoff seeding assumes overall record, "
-          "ties broken by fewer points against; division rules are not modelled. 'ESPN says' is ESPN's own simulation._")
+    print("\n_Odds simulate every remaining week from team strength; seeding assumes record, then fewer points against._")
 
 
 def lookahead_section(lg):
@@ -398,8 +438,6 @@ def opportunity_section(lg):
             bits = [f"{out} out"]
         print(f"- **{pl.name}** ({pos(pl)}, {lg.pro_abbrev[pl.pro_team]}, form {pl.form:.1f}): about **+{gain:.0f} FP/G** "
               f"possible · " + " · ".join(bits) + f" · {pl.owned:.0f}% owned{inj(pl)}")
-    print("\n_Backtest on 2025-26 game logs: players keep about two thirds of a minutes surge, and bench players score ~27% "
-          "more when a star teammate is out. Estimates are deliberately shaded down; this is a watch list, not a move._")
 
 
 def power_rankings_section(lg, me):
@@ -416,8 +454,7 @@ def power_rankings_section(lg, me):
         rows.append([f"{i + 1} {move}", name, rec_, f"{t['pace']:,.0f}", f"{t['l7']:,.0f}{trend}",
                      f"{t['roster']:,.0f}", f"{t['power']:,.0f}"])
     table(["#", "Team", "W-L", "Pace", "L7", "Roster", "Power"], rows, text_cols=2)
-    print("\n_FP per week. Pace = season scoring rate, L7 = last 7 days, Roster = current roster on current form. "
-          "Power blends results (more weight as the season goes) with roster strength, plus record. Arrows = vs yesterday._")
+    print("\n_FP per week · Pace = season rate, L7 = last 7 days, Roster = roster on current form · arrows vs yesterday._")
 
 
 def nightly_body(lg, a):
@@ -432,6 +469,13 @@ def nightly_body(lg, a):
     if rec:
         with health.section("Actuals save", quiet=True):
             tracking.save_actuals(rec)
+    snap = None
+    if rec:
+        with health.section("Yesterday's snapshot", quiet=True):
+            snap = tracking.load_snapshot(rec["day"])
+            if snap is None:
+                health.warn(f"no projection snapshot saved for {rec['day']}; last night's projections were rebuilt from "
+                            f"current rosters and the week comparison is skipped", source="state")
     p = lg.win_probability(me, opp)
     print(f"# {lg.now:%a %b %-d, %Y · %-I:%M %p} ET")
     if lg.scoring_mismatch:
@@ -441,50 +485,24 @@ def nightly_body(lg, a):
     if decided:
         print(f"\n> {decided[1]}")
     label = DECIDED_LABEL[decided[0]] if decided else outlook(p)
-    print(f"\n{{{{OVERVIEW}}}} **Outlook: {label}** ({p:.0%} win chance)")
+    was = f", {snap['win_prob']:.0%} yesterday" if snap and snap["period"] == lg.matchup_period else ""
+    print(f"\n{{{{OVERVIEW}}}} **Outlook: {label}** ({p:.0%} win chance{was})")
 
     # Today: points already scored in started games + best lineup for the games still to come.
     sp_today = lg.date_sp.get(lg.today)
     today = {tid: lg.points_so_far(tid).get(sp_today, 0.0) + lg.day_projection(lg.roster(tid), lg.today)[0]
              for tid in (me, opp)}
-    tday = f"{lg.today:%a} proj"
-    names = [lg.team_names[me], lg.team_names[opp]]
-    if rec and rec["final"]:
-        a_, b_ = rec["sides"]
-        won = a_["total"] > b_["total"]
-        print(f"\n## Week {rec['period']} final {'🏆 WON' if won else '❌ LOST' if a_['total'] < b_['total'] else '🤝 TIED'}")
-        cells = scored([a_["total"], b_["total"]])
-        results = ("🏆", "❌") if won else ("❌", "🏆") if a_["total"] < b_["total"] else ("🤝", "🤝")
-        table(["Team", f"{rec['day']:%a}", "Final (margin)"],
-              [[f"{results[i]} {lg.team_names[s['tid']]}", f"{s['day_pts']:,.0f}", cells[i]] for i, s in enumerate(rec["sides"])])
-        print("\n" + top_line(lg, rec))
-        alert = bench_alert(lg, rec)
-        if alert:
-            print("\n" + alert)
-        compare_with_snapshot(lg, rec, proj, p, me, opp)
-        print(f"\n## Week {lg.matchup_period} preview · vs {names[1]}")
-        cells = scored([proj[me][0], proj[opp][0]])
-        table(["Team", tday, "Proj (margin)"],
-              [[names[i], f"{today[tid]:,.0f}", cells[i]] for i, tid in enumerate((me, opp))])
-    else:
-        print(f"\n## Matchup summary · Week {lg.matchup_period} vs {names[1]}")
-        day_pts = {s["tid"]: s["day_pts"] for s in rec["sides"]} if rec else {}
-        cells = scored([proj[me][0], proj[opp][0]])
-        yday = f"{lg.today - dt.timedelta(days=1):%a}"
-        table(["Team", yday, tday, "Week", "Proj (margin)"],
-              [[names[i], f"{day_pts.get(tid, 0):,.0f}", f"{today[tid]:,.0f}", f"{proj[tid][1]:,.0f}", cells[i]]
-               for i, tid in enumerate((me, opp))])
-        if rec:
-            print("\n" + top_line(lg, rec))
-            alert = bench_alert(lg, rec)
-            if alert:
-                print("\n" + alert)
-            compare_with_snapshot(lg, rec, proj, p, me, opp)
+    with health.section("Matchup"):
+        if rec and rec["final"]:
+            week_final_section(lg, rec, snap, proj, today, me, opp)
+        else:
+            matchup_section(lg, rec, snap, proj, today, me, opp)
 
     with health.section("Season picture"):
         season_section(lg, p)
-    with health.section("Schedule look-ahead"):
-        lookahead_section(lg)
+    if POLICY["report_lookahead"]:
+        with health.section("Schedule look-ahead"):
+            lookahead_section(lg)
     with health.section("IR watch"):
         ir_section(lg)
     with health.section("News & rest watch"):
@@ -497,17 +515,6 @@ def nightly_body(lg, a):
         tracking.save_snapshot(lg, proj, today, p, (me, opp))
     with health.section("Power rankings"):
         power_rankings_section(lg, me)
-
-
-def compare_with_snapshot(lg, rec, proj, p, me, opp):
-    """Last night's projected-vs-actual and the week-projection delta, against yesterday's saved snapshot."""
-    with health.section("Projected vs actual"):
-        snap = tracking.load_snapshot(rec["day"])
-        if snap is None:
-            health.warn(f"no projection snapshot saved for {rec['day']}; last night's projections were rebuilt from "
-                        f"current rosters and the week comparison is skipped", source="state")
-        vs_projection(lg, rec, snap, me, opp)
-        week_delta(lg, rec, snap, proj, p, me, opp)
 
 
 def cmd_nightly(lg, a):

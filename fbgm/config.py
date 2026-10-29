@@ -89,6 +89,8 @@ POLICY = {
     # Report flags a coming leg at or above this chance to sit, and news from the last news_hours.
     "rest_flag": 0.15,
     "news_hours": 30,
+    # News and rest watch only covers players at least this good (FP/G): bench status news is not worth a line.
+    "news_min_rate": 30.0,
     # IR players are mentioned in the report only once a return is within this many days (or a timeline first appears).
     "ir_window_days": 14,
     # ...and whenever a known return estimate moves by this many days or more (either direction), however far out.
@@ -108,6 +110,8 @@ POLICY = {
     "season_regress": 0.5,
     "season_must_win_swing": 0.15,
     # Look-ahead: weeks to show after this one, and how far from the league-average games a week must be to get a mark.
+    # The look-ahead section and the per-move games line are off by default: the nightly is meant to be a quick read.
+    "report_lookahead": False,
     "lookahead_weeks": 3,
     "lookahead_flag": 0.6,
     # Opportunity signals (tools/backtest_signals.py, 2025-26): after a +5 mpg minutes surge players keep ~66% of the
@@ -121,6 +125,7 @@ POLICY = {
     "signal_star_rate": 40.0,
     "signal_min_uplift": 3.0,
     "signal_pool": 40,
+    "signal_show": 3,
     # Accuracy review: scored days (snapshot + actual results for the same date) needed before it reports anything.
     "accuracy_min_days": 14,
     "decided_win": 0.99,
