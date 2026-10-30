@@ -461,9 +461,42 @@ def opportunity_section(lg):
               f"possible · " + " · ".join(bits) + f" · {pl.owned:.0f}% owned{inj(pl)}")
 
 
+def overview(names, me, opp, rec, compare, proj, week):
+    """Two plain sentences for the top of the report, built from the numbers below them so nothing is retyped by hand:
+    how last night went and where the week stands (Mondays: last week's result and the new week's opening projection).
+    names: {team id: name}. compare: night_compare() result for rec, or None. proj: {team id: (week projection,
+    points so far, remaining)}."""
+    them = names[opp]
+    if rec and rec["final"]:
+        a_, b_ = rec["sides"]
+        res = "won" if a_["total"] > b_["total"] else "lost" if a_["total"] < b_["total"] else "tied"
+        first = f"We {res} week {rec['period']}, {a_['total']:,.0f}-{b_['total']:,.0f}, against {names[b_['tid']]}."
+        edge = proj[me][0] - proj[opp][0]
+        second = (f"Week {week} opens against {them}, and the model projects us {'ahead' if edge >= 0 else 'behind'} "
+                  f"{proj[me][0]:,.0f}-{proj[opp][0]:,.0f}.")
+        return f"{first} {second}"
+    parts = []
+    if rec:
+        mine, theirs = rec["sides"][0]["day_pts"], rec["sides"][1]["day_pts"]
+        verb = "outscored" if mine > theirs else "were outscored by" if mine < theirs else "tied"
+        sentence = f"On {rec['day']:%A} we {verb} {them} {mine:,.0f}-{theirs:,.0f}"
+        if compare:
+            miss = compare[me]["actual"] - compare[me]["proj"]
+            if abs(miss) >= 5:
+                sentence += f", {abs(miss):,.0f} {'over' if miss > 0 else 'under'} our projection"
+        parts.append(sentence + ".")
+    a, b = proj[me][1], proj[opp][1]
+    pos = "lead" if a > b else "trail" if a < b else "are level with"
+    sentence = f"We {pos} {them} {a:,.0f}-{b:,.0f} for the week"
+    ahead = proj[me][0] - proj[opp][0]
+    sentence += f", and the model projects us {'ahead' if ahead >= 0 else 'behind'} {proj[me][0]:,.0f}-{proj[opp][0]:,.0f}."
+    parts.append(sentence)
+    return " ".join(parts)
+
+
 def nightly_body(lg, a):
     """Morning report in markdown: overview + outlook, matchup grid (Mondays: last week's final and the
-    new week's preview), roster moves, power rankings. {{OVERVIEW}} is for the reader to fill in."""
+    new week's preview), roster moves, power rankings. The overview sentences are generated here from the numbers."""
     me, opp = CONFIG["my_team_id"], lg.opponent_id()
     try:
         rec = recap_data(lg, lg.today - dt.timedelta(days=1))
@@ -490,7 +523,11 @@ def nightly_body(lg, a):
         print(f"\n> {decided[1]}")
     label = DECIDED_LABEL[decided[0]] if decided else outlook(p)
     was = f", {snap['win_prob']:.0%} yesterday" if snap and snap["period"] == lg.matchup_period else ""
-    print(f"\n{{{{OVERVIEW}}}} **Outlook: {label}** ({p:.0%} win chance{was})")
+    said = ""
+    with health.section("Overview", quiet=True):
+        compare = night_compare(lg, rec, snap)[0] if rec else None
+        said = overview(lg.team_names, me, opp, rec, compare, proj, lg.matchup_period) + " "
+    print(f"\n{said}**Outlook: {label}** ({p:.0%} win chance{was})")
 
     # Today: points already scored in started games + best lineup for the games still to come.
     sp_today = lg.date_sp.get(lg.today)
@@ -531,7 +568,7 @@ def cmd_nightly(lg, a):
     banner = health.banner()
     if banner:
         lines = text.split("\n")
-        at = next((i for i, ln in enumerate(lines) if "{{OVERVIEW}}" in ln), 0)
+        at = next((i for i, ln in enumerate(lines) if "**Outlook:" in ln), 0)
         text = "\n".join(lines[:at + 1] + ["", banner] + lines[at + 1:])
     print(text.rstrip("\n"))
     if health.issues():
