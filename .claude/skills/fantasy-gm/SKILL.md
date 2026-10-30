@@ -59,7 +59,7 @@ Global flags (before the command): `--fresh` (skip 5-min cache), `--mode aggress
 - Always open/use an empty IR slot for an OUT player before dropping anyone.
 
 ## Morning report (`nightly`)
-Prints the finished report in markdown; the reader only replaces `{{OVERVIEW}}` with 2-3 sentences.
+Prints the finished report in markdown, including two overview sentences generated from the numbers (`overview()` in report.py: last night vs the opponent and projection, the week so far and the model's finish; Mondays: last week's result and the new week's opening projection). The routine replies with it verbatim.
 - **Win chance** = 4,000 simulations of the rest of the week: every start draws a real single-game swing (that
   night's FP / player rate, sampled from the last 30 days of games: busts to 2x+ booms), healthy starters miss 5% of
   games, DTD players play 60%, plus a 6% projection-error factor per team. Outlook: 🟢 Strong (80%+), 🟢 Lean W
