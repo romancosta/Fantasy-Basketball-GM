@@ -528,10 +528,21 @@ class League:
     def recent_adds(self):
         """{player id: when} for players we added within flex_recent_days (newest info from ESPN)."""
         if not hasattr(self, "_recent_adds"):
-            out = {}
+            out, txns = {}, []
             try:
                 cutoff = self.now - dt.timedelta(days=POLICY["flex_recent_days"])
-                for t in espn.league("mTransactions2").get("transactions", []):
+                # ESPN returns only one scoring period's transactions per request (the current one by default), so
+                # a seven-day look-back is one request per period.
+                sp_now = self.date_sp.get(self.today)
+                periods = range(max(1, sp_now - POLICY["flex_recent_days"]), sp_now + 1) if sp_now else [None]
+                seen = set()
+                for sp in periods:
+                    batch = espn.league("mTransactions2", scoring_period=sp).get("transactions", [])
+                    for t in batch:
+                        if t.get("id") not in seen:
+                            seen.add(t.get("id"))
+                            txns.append(t)
+                for t in txns:
                     if (t.get("status") != "EXECUTED" or t.get("teamId") != CONFIG["my_team_id"]
                             or t.get("type") not in ("FREEAGENT", "WAIVER")):
                         continue
