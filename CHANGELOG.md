@@ -3,6 +3,7 @@
 Notable changes to the nightly report and tooling. Newest first.
 
 ## Unreleased
+- Fix: the 2am nightly saw yesterday's roster (ESPN's default view rolls over later), missing evening adds/drops. The roster is now requested for the report date's scoring period; the matchup week comes from our calendar.
 - Compact nightly: one Matchup grid (night, today, week, change since yesterday); News limited to significant items; IR watch one line; look-ahead off by default; shorter footnotes; 3 opportunities; one League table + one summary line replaces Season picture and Power rankings.
 - Accuracy data capture (M6, part 1): snapshots v2, daily actuals files, 200-day retention, `fbgm accuracy` status. The review itself comes after ~14 scored days.
 - Opportunity watch (M5): free agents with a minutes surge or a star teammate out, backed by a backtest tool. Informational only.

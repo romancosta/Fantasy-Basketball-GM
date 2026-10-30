@@ -133,12 +133,15 @@ def best_lineup(players, slots, value=None):
     return sum(value(pl) for pl in lineup), lineup
 
 
+LEAGUE_VIEWS = ("mTeam", "mSettings", "mRoster", "mMatchupScore", "mBoxscore", "mStandings")
+
+
 class League:
     def __init__(self, today=None):
         now = dt.datetime.now(ET)
         self.now = now if today is None else dt.datetime.combine(today, dt.time(0, 0), ET)
         self.today = self.now.date()
-        lg = espn.league("mTeam", "mSettings", "mRoster", "mMatchupScore", "mBoxscore", "mStandings")
+        lg = espn.league(*LEAGUE_VIEWS)
         self.raw = lg
         settings = lg["settings"]
         self.scoring = {i["statId"]: i["points"] for i in settings["scoringSettings"]["scoringItems"]}
@@ -149,13 +152,25 @@ class League:
         counts = settings["rosterSettings"]["lineupSlotCounts"]
         self.slots = [int(s) for s, c in counts.items() for _ in range(c) if int(s) not in (BENCH, IR)]
         self.ir_slots = counts.get(str(IR), 0)
-        self.teams = {t["id"]: t for t in lg["teams"]}
-        self.team_names = {t["id"]: t.get("name") or f"{t.get('location', '')} {t.get('nickname', '')}".strip()
-                           for t in lg["teams"]}
         self.acq = settings["acquisitionSettings"]
         self._schedule()
+        self._sync_scoring_period()
         self._players()
         self.apply_rest_rulings()
+
+    def _sync_scoring_period(self):
+        """ESPN's default view is of ITS current scoring period, which rolls over some hours after midnight ET. Before
+        that (the 2am nightly run) the default roster is yesterday's lineup and misses any add or drop made yesterday
+        evening. Ask for the roster of the scoring period we are actually reporting on."""
+        sp_today = self.date_sp.get(self.today)
+        default_sp = self.raw.get("scoringPeriodId")
+        # ESPN's own week number is only a sanity check once it has rolled over to the day we report on.
+        self.espn_matchup_period = self.raw["status"]["currentMatchupPeriod"] if default_sp == sp_today else None
+        if sp_today and default_sp != sp_today:
+            self.raw = espn.league(*LEAGUE_VIEWS, scoring_period=sp_today)
+        self.teams = {t["id"]: t for t in self.raw["teams"]}
+        self.team_names = {t["id"]: t.get("name") or f"{t.get('location', '')} {t.get('nickname', '')}".strip()
+                           for t in self.raw["teams"]}
 
     # ---- schedule -------------------------------------------------------
     def _schedule(self):
@@ -176,7 +191,9 @@ class League:
         # Matchup weeks run Monday-Sunday; week 1 is the partial opening week.
         first = min(self.sp_date.values())
         self.week_of = lambda d: ((d - (first - dt.timedelta(days=first.weekday()))).days // 7) + 1
-        self.matchup_period = self.raw["status"]["currentMatchupPeriod"]
+        # Our own date mapping, not ESPN's field: ESPN's week number also rolls over hours after midnight.
+        local = self.week_of(self.today)
+        self.matchup_period = local if local >= 1 else self.raw["status"]["currentMatchupPeriod"]
         week_start = first - dt.timedelta(days=first.weekday()) + dt.timedelta(weeks=self.matchup_period - 1)
         self.week_days = [d for d in (week_start + dt.timedelta(days=i) for i in range(7)) if d >= first]
         self.week_end = lambda period: week_start + dt.timedelta(weeks=period - self.matchup_period, days=6)
