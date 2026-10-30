@@ -1,0 +1,94 @@
+{
+ "date": "2026-10-30",
+ "me": 31,
+ "opp": 5,
+ "period": 2,
+ "teams": {
+  "31": {
+   "day": 309.1,
+   "players": {
+    "Alperen Sengun": {
+     "avail": 0.6,
+     "lineup": true,
+     "proj": 37.3,
+     "rest": 0.015
+    },
+    "Jabari Smith Jr.": {
+     "avail": 1.0,
+     "lineup": true,
+     "proj": 40.0,
+     "rest": 0.015
+    },
+    "Jamal Murray": {
+     "avail": 1.0,
+     "lineup": true,
+     "proj": 55.6,
+     "rest": 0.0
+    },
+    "Jaylen Brown": {
+     "avail": 0.6,
+     "lineup": true,
+     "proj": 29.0,
+     "rest": 0.141
+    },
+    "LeBron James": {
+     "avail": 1.0,
+     "lineup": true,
+     "proj": 46.5,
+     "rest": 0.15
+    },
+    "Michael Porter Jr.": {
+     "avail": 1.0,
+     "lineup": true,
+     "proj": 52.2,
+     "rest": 0.0
+    },
+    "RJ Barrett": {
+     "avail": 1.0,
+     "lineup": true,
+     "proj": 48.4,
+     "rest": 0.0
+    }
+   },
+   "week": 1773.5
+  },
+  "5": {
+   "day": 265.2,
+   "players": {
+    "Austin Reaves": {
+     "avail": 1.0,
+     "lineup": true,
+     "proj": 53.7,
+     "rest": 0.0
+    },
+    "Brandon Miller": {
+     "avail": 1.0,
+     "lineup": true,
+     "proj": 45.6,
+     "rest": 0.074
+    },
+    "Cade Cunningham": {
+     "avail": 1.0,
+     "lineup": true,
+     "proj": 62.8,
+     "rest": 0.0
+    },
+    "Jayson Tatum": {
+     "avail": 1.0,
+     "lineup": true,
+     "proj": 64.0,
+     "rest": 0.0
+    },
+    "Josh Hart": {
+     "avail": 1.0,
+     "lineup": true,
+     "proj": 39.1,
+     "rest": 0.0
+    }
+   },
+   "week": 1649.3
+  }
+ },
+ "version": 2,
+ "win_prob": 0.7515
+}

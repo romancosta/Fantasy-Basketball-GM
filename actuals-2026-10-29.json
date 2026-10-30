@@ -1,0 +1,41 @@
+{
+ "date": "2026-10-29",
+ "final": false,
+ "period": 2,
+ "teams": {
+  "31": {
+   "day": 117.0,
+   "players": {
+    "Damian Lillard": {
+     "bench": false,
+     "pts": 20.0
+    },
+    "Domantas Sabonis": {
+     "bench": false,
+     "pts": 52.0
+    },
+    "Donovan Clingan": {
+     "bench": false,
+     "pts": 45.0
+    }
+   },
+   "total": 854.0
+  },
+  "5": {
+   "day": 106.0,
+   "players": {
+    "Zach LaVine": {
+     "bench": false,
+     "pts": 50.0
+    },
+    "Zion Williamson": {
+     "bench": false,
+     "pts": 56.0
+    }
+   },
+   "total": 902.0
+  }
+ },
+ "version": 2,
+ "winner": null
+}
