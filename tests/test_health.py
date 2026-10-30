@@ -53,7 +53,7 @@ class CheckLeague(unittest.TestCase):
 
     def lg(self, **kw):
         base = dict(roster=lambda: ["p"], players=dict.fromkeys(range(500)), today=D(2026, 10, 28),
-                    date_sp={D(2026, 10, 28): 9}, week_of=lambda d: 2, matchup_period=2, scoring_mismatch={},
+                    date_sp={D(2026, 10, 28): 9}, matchup_period=2, espn_matchup_period=2, scoring_mismatch={},
                     opponent_id=lambda: 3)
         base.update(kw)
         return NS(**base)
@@ -63,10 +63,14 @@ class CheckLeague(unittest.TestCase):
         self.assertEqual(health.issues(), [])
 
     def test_each_warning(self):
-        health.check_league(self.lg(players={}, date_sp={}, week_of=lambda d: 3, scoring_mismatch={4: (1, 2)}))
+        health.check_league(self.lg(players={}, date_sp={}, espn_matchup_period=3, scoring_mismatch={4: (1, 2)}))
         text = health.render()
         for needle in ("pool is unusually small", "no scoring period", "date mapping disagrees", "scoring differs"):
             self.assertIn(needle, text)
+
+    def test_espn_week_is_only_checked_once_it_has_rolled_over(self):
+        health.check_league(self.lg(espn_matchup_period=None, matchup_period=3))
+        self.assertEqual(health.issues(), [])
 
     def test_fatal_problems_raise(self):
         with self.assertRaises(RuntimeError):
