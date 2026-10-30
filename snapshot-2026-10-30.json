@@ -5,7 +5,7 @@
  "period": 2,
  "teams": {
   "31": {
-   "day": 309.1,
+   "day": 342.3,
    "players": {
     "Alperen Sengun": {
      "avail": 0.6,
@@ -31,6 +31,12 @@
      "proj": 29.0,
      "rest": 0.141
     },
+    "Jonathan Kuminga": {
+     "avail": 1.0,
+     "lineup": true,
+     "proj": 33.1,
+     "rest": 0.114
+    },
     "LeBron James": {
      "avail": 1.0,
      "lineup": true,
@@ -50,7 +56,7 @@
      "rest": 0.0
     }
    },
-   "week": 1773.5
+   "week": 1801.6
   },
   "5": {
    "day": 265.2,
@@ -86,9 +92,9 @@
      "rest": 0.0
     }
    },
-   "week": 1649.3
+   "week": 1647.1
   }
  },
  "version": 2,
- "win_prob": 0.7515
+ "win_prob": 0.7885
 }
