@@ -206,21 +206,21 @@ class NightlyWrapper(unittest.TestCase):
         return capture(report.cmd_nightly, None, None)[0]
 
     def test_clean_report_is_unchanged(self):
-        out = self.run_with(lambda lg, a: print("# Head\n\n{{OVERVIEW}} **Outlook: x**\n\n## Body"))
-        self.assertEqual(out, "# Head\n\n{{OVERVIEW}} **Outlook: x**\n\n## Body\n")
+        out = self.run_with(lambda lg, a: print("# Head\n\nOverview. **Outlook: x**\n\n## Body"))
+        self.assertEqual(out, "# Head\n\nOverview. **Outlook: x**\n\n## Body\n")
 
     def test_issue_adds_banner_and_health_section(self):
         def body(lg, a):
-            print("# Head\n\n{{OVERVIEW}} **Outlook: x**\n\n## Body")
+            print("# Head\n\nOverview. **Outlook: x**\n\n## Body")
             health.warn("something is off")
         lines = self.run_with(body).splitlines()
-        i = lines.index("{{OVERVIEW}} **Outlook: x**") if "{{OVERVIEW}} **Outlook: x**" in lines else 2
+        i = lines.index("Overview. **Outlook: x**")
         self.assertTrue(lines[i + 2].startswith("> ⚠️ 1 data issue"))
         self.assertEqual(lines[-2:], ["## Health", "- ⚠️ something is off"])
 
     def test_failed_section_is_contained(self):
         def body(lg, a):
-            print("# Head\n\n{{OVERVIEW}} **Outlook: x**")
+            print("# Head\n\nOverview. **Outlook: x**")
             with health.section("IR watch"):
                 raise ValueError("bad")
             print("\n## Power rankings")
@@ -262,6 +262,42 @@ class League(unittest.TestCase):
     def test_nickname(self):
         self.assertEqual([report.nickname(n) for n in ("Joe Po Knows Ball", "The Godfather", "eyeBALL", "Hart of the Garden")],
                          ["Joe Po", "The Godfather", "eyeBALL", "Hart"])
+
+
+class Overview(unittest.TestCase):
+    NAMES = {1: "Ballers", 2: "Hart"}
+    PROJ = {1: (1802.0, 971.0, 831.0), 2: (1647.0, 1006.0, 641.0)}
+
+    def compare(self, rec):
+        return report.night_compare(LG, rec, snapshot())[0]
+
+    def test_normal_day(self):
+        rec = recap((("Ann Able", 117.0),))
+        rec["sides"][1]["day_pts"] = 106.0
+        snap_cmp = {1: {"proj": 155.0, "actual": 117.0}, 2: {"proj": 88.0, "actual": 106.0}}
+        text = report.overview(self.NAMES, 1, 2, rec, snap_cmp, self.PROJ, 2)
+        self.assertEqual(text, "On Tuesday we outscored Hart 117-106, 38 under our projection. "
+                               "We trail Hart 971-1,006 for the week, and the model projects us ahead 1,802-1,647.")
+
+    def test_small_miss_is_not_mentioned_and_lead_wording(self):
+        rec = recap()
+        cmp_ = {1: {"proj": 98.0, "actual": 100.0}, 2: {"proj": 250.0, "actual": 250.0}}
+        proj = {1: (1500.0, 1100.0, 400.0), 2: (1600.0, 900.0, 700.0)}
+        text = report.overview(self.NAMES, 1, 2, rec, cmp_, proj, 2)
+        self.assertIn("we were outscored by Hart 100-250.", text)
+        self.assertNotIn("projection", text.split(".")[0])
+        self.assertIn("We lead Hart 1,100-900 for the week, and the model projects us behind 1,500-1,600.", text)
+
+    def test_first_day_without_a_recap(self):
+        text = report.overview(self.NAMES, 1, 2, None, None, self.PROJ, 2)
+        self.assertTrue(text.startswith("We trail Hart 971-1,006 for the week"))
+
+    def test_monday_final_and_new_week(self):
+        rec = recap(final=True, totals=(1826.0, 1743.0))
+        rec["sides"][1]["tid"] = 2
+        text = report.overview(self.NAMES, 1, 2, rec, None, {1: (2073.0, 0.0, 2073.0), 2: (1849.0, 0.0, 1849.0)}, 3)
+        self.assertEqual(text, "We won week 2, 1,826-1,743, against Hart. "
+                               "Week 3 opens against Hart, and the model projects us ahead 2,073-1,849.")
 
 
 if __name__ == "__main__":
