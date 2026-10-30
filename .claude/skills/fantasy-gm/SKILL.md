@@ -58,6 +58,12 @@ Global flags (before the command): `--fresh` (skip 5-min cache), `--mode aggress
   propose `--mode aggressive` (up to 3 flex spots). Don't switch without their OK.
 - Always open/use an empty IR slot for an OUT player before dropping anyone.
 
+## Roster freshness (important for the 2am run)
+ESPN's default league view is of ITS current scoring period, which rolls over hours after midnight ET, so a 2am run would see
+yesterday's roster and miss an add or drop made the evening before. `League._sync_scoring_period` therefore re-requests the
+roster views for the scoring period of the date being reported (one extra request only when ESPN hasn't rolled over yet). The
+matchup week likewise comes from our own Monday-Sunday calendar; ESPN's week number is only a sanity check once it has rolled over.
+
 ## Morning report (`nightly`)
 Prints the finished report in markdown, including two overview sentences generated from the numbers (`overview()` in report.py: last night vs the opponent and projection, the week so far and the model's finish; Mondays: last week's result and the new week's opening projection). The routine replies with it verbatim.
 - **Win chance** = 4,000 simulations of the rest of the week: every start draws a real single-game swing (that

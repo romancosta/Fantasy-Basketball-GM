@@ -66,9 +66,9 @@ def check_league(lg, min_pool=100):
         warn(f"ESPN player pool is unusually small ({len(lg.players)} players); free-agent advice may be unreliable")
     if lg.today not in lg.date_sp:
         warn(f"ESPN has no scoring period for {lg.today}; projections for today may be empty")
-    if lg.week_of(lg.today) != lg.matchup_period:
-        warn(f"date mapping disagrees with ESPN: {lg.today} computes as week {lg.week_of(lg.today)} but ESPN says "
-             f"week {lg.matchup_period}")
+    if lg.espn_matchup_period is not None and lg.espn_matchup_period != lg.matchup_period:
+        warn(f"date mapping disagrees with ESPN: {lg.today} computes as week {lg.matchup_period} but ESPN says "
+             f"week {lg.espn_matchup_period}")
     if lg.scoring_mismatch:
         warn(f"league scoring differs from the confirmed table: {lg.scoring_mismatch}")
     if lg.opponent_id() is None:
