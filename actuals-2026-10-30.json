@@ -1,0 +1,65 @@
+{
+ "date": "2026-10-30",
+ "final": false,
+ "period": 2,
+ "teams": {
+  "31": {
+   "day": 256.0,
+   "players": {
+    "Jabari Smith Jr.": {
+     "bench": false,
+     "pts": 40.0
+    },
+    "Jamal Murray": {
+     "bench": false,
+     "pts": 83.0
+    },
+    "Jonathan Kuminga": {
+     "bench": false,
+     "pts": 9.0
+    },
+    "LeBron James": {
+     "bench": false,
+     "pts": 65.0
+    },
+    "Michael Porter Jr.": {
+     "bench": false,
+     "pts": 36.0
+    },
+    "RJ Barrett": {
+     "bench": false,
+     "pts": 23.0
+    }
+   },
+   "total": 971.0
+  },
+  "5": {
+   "day": 223.0,
+   "players": {
+    "Austin Reaves": {
+     "bench": false,
+     "pts": 40.0
+    },
+    "Brandon Miller": {
+     "bench": false,
+     "pts": 48.0
+    },
+    "Cade Cunningham": {
+     "bench": false,
+     "pts": 46.0
+    },
+    "Jayson Tatum": {
+     "bench": false,
+     "pts": 60.0
+    },
+    "Josh Hart": {
+     "bench": false,
+     "pts": 29.0
+    }
+   },
+   "total": 1006.0
+  }
+ },
+ "version": 2,
+ "winner": null
+}

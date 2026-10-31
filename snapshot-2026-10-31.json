@@ -1,0 +1,112 @@
+{
+ "date": "2026-10-31",
+ "me": 31,
+ "opp": 5,
+ "period": 2,
+ "teams": {
+  "31": {
+   "day": 397.2,
+   "players": {
+    "Alperen Sengun": {
+     "avail": 0.6,
+     "lineup": true,
+     "proj": 37.3,
+     "rest": 0.015
+    },
+    "Damian Lillard": {
+     "avail": 1.0,
+     "lineup": true,
+     "proj": 45.7,
+     "rest": 0.0
+    },
+    "Domantas Sabonis": {
+     "avail": 1.0,
+     "lineup": true,
+     "proj": 62.9,
+     "rest": 0.0
+    },
+    "Donovan Clingan": {
+     "avail": 1.0,
+     "lineup": true,
+     "proj": 43.7,
+     "rest": 0.0
+    },
+    "Jabari Smith Jr.": {
+     "avail": 1.0,
+     "lineup": true,
+     "proj": 40.0,
+     "rest": 0.015
+    },
+    "Jaylen Brown": {
+     "avail": 0.6,
+     "lineup": true,
+     "proj": 26.9,
+     "rest": 0.203
+    },
+    "Jonathan Kuminga": {
+     "avail": 1.0,
+     "lineup": true,
+     "proj": 31.3,
+     "rest": 0.114
+    },
+    "LeBron James": {
+     "avail": 1.0,
+     "lineup": true,
+     "proj": 43.5,
+     "rest": 0.217
+    },
+    "Shai Gilgeous-Alexander": {
+     "avail": 1.0,
+     "lineup": true,
+     "proj": 65.8,
+     "rest": 0.0
+    }
+   },
+   "week": 1711.2
+  },
+  "5": {
+   "day": 261.3,
+   "players": {
+    "Brandon Miller": {
+     "avail": 1.0,
+     "lineup": true,
+     "proj": 48.5,
+     "rest": 0.015
+    },
+    "Dylan Harper": {
+     "avail": 1.0,
+     "lineup": true,
+     "proj": 38.9,
+     "rest": 0.0
+    },
+    "Lauri Markkanen": {
+     "avail": 0.6,
+     "lineup": true,
+     "proj": 29.8,
+     "rest": 0.0
+    },
+    "Tyler Herro": {
+     "avail": 1.0,
+     "lineup": true,
+     "proj": 49.4,
+     "rest": 0.0
+    },
+    "Zach LaVine": {
+     "avail": 1.0,
+     "lineup": true,
+     "proj": 43.4,
+     "rest": 0.0
+    },
+    "Zion Williamson": {
+     "avail": 1.0,
+     "lineup": true,
+     "proj": 51.4,
+     "rest": 0.0
+    }
+   },
+   "week": 1603.5
+  }
+ },
+ "version": 2,
+ "win_prob": 0.78975
+}
