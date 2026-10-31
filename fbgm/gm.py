@@ -142,14 +142,38 @@ def cmd_swap(lg, a):
     header(lg)
     add = find(lg, a.add, lg.free_agents)
     drop = find(lg, a.drop, lg.roster())
-    wk, starts = lg.evaluate_swap(add, drop)
+    sw = lg.evaluate_swap(add, drop)
+    wk, starts = sw.gain, sw.starts
     print(f"\nAdd  {add.name:24} form {add.form:5.1f}  rate {add.rate:5.1f}  games left {lg.games_left(add)}  "
           f"({'waivers, usable ' + str(lg.available_date(add)) if add.status == 'WAIVERS' else 'free agent'}){inj(add)}")
     print(f"Drop {drop.name:24} form {drop.form:5.1f}  rate {drop.rate:5.1f}  games left {lg.games_left(drop)}{inj(drop)}")
     print(f"Matchups  add: {opp_list(lg, add)} (SOS {sos_str(lg, add).strip()})")
     print(f"         drop: {opp_list(lg, drop)} (SOS {sos_str(lg, drop).strip()})")
     print(f"This week: {wk:+.1f} FP on current form | {starts_str(starts)} | ROS rate {add.rate - drop.rate:+.1f} FP/G")
-    print("Verdict: " + verdict(lg, add, drop, wk, starts, a.mode))
+    print(f"By day: {days_str(sw.days)}" + (f" (moving now: {days_str(sw.now_days)} = {sw.now_gain:+.0f})" if sw.wait else ""))
+    when = timing_str(lg, sw, add, drop)
+    v = verdict(lg, add, drop, wk, starts, a.mode)
+    if v.startswith("MOVE") and when:
+        v = ("MOVE AFTER TONIGHT" if sw.wait else "MOVE") + v[4:] + f"; {when}"
+    print("Verdict: " + v)
+
+
+def days_str(days):
+    """Day-by-day FP gain of a swap, e.g. 'Sat: −35, Sun: +40' (days that don't change are left out)."""
+    shown = [(d, g) for d, g in days if round(g) != 0]
+    return ", ".join(f"{d:%a}: {'−' if g < 0 else '+'}{abs(g):.0f}" for d, g in shown) or "no change"
+
+
+def timing_str(lg, sw, add, drop):
+    """When to make the move, or '' when it can be made now and counts from today."""
+    first = f"{short(add)} first plays {sw.add_first:%a %m/%d}" if sw.add_first else f"{short(add)} has no game left"
+    if sw.wait:
+        t = lg.game_start(drop, lg.today)
+        return f"drop after {short(drop)}'s game tonight ({t:%-I:%M %p}), {first}"
+    if sw.effective > lg.today:
+        why = "waiver claim clears" if add.status == "WAIVERS" and sw.effective == lg.available_date(add) else "counts from"
+        return f"{why} {sw.effective:%a %m/%d}, {first}"
+    return ""
 
 
 def starts_str(starts):
@@ -198,11 +222,16 @@ def plan_moves(lg, a):
     Returns (flex, hurt core, [(week FP, starts, add, drop)], alternatives for the first move)."""
     flex = lg.flex_pool(a.mode)
     roster = list(lg.roster())
+    days = lg.remaining_days()
     hurt = [p for p in roster if p not in flex and p.lineup_slot != IR and core_drop_ok(lg, p)]
     drops = [p for p in roster if p.lineup_slot != IR]
     cands = sorted(lg.free_agents, key=lambda p: -p.form)[:40]
     # Streamers: also consider the best schedule fits this week.
     cands += sorted(lg.free_agents, key=lambda p: -p.form * p.availability * lg.games_left(p))[:20]
+    # Schedule fits: games on days our lineup has an open slot the add could fill.
+    holes = {d: open_slots(lg, roster, d) for d in days}
+    cands += sorted(lg.free_agents, key=lambda p: -p.form * p.availability * sum(
+        1 for d in days if holes[d] & p.slots and lg.plays(p, d) and not lg.locked(p, d)))[:20]
     cands = [p for p in {c.id: c for c in cands}.values()
              if p.availability >= POLICY["add_min_availability"] and p.gp > 0]
 
@@ -212,20 +241,20 @@ def plan_moves(lg, a):
             for drop in drops:
                 if drop_kind(lg, add, drop, flex) is None:
                     continue
-                wk, starts = lg.evaluate_swap(add, drop, roster)
-                if starts and wk >= POLICY["flex_min_week_gain"]:
-                    rows.append((wk, starts, add, drop))
+                sw = lg.evaluate_swap(add, drop, roster)
+                if sw.starts and sw.gain >= POLICY["flex_min_week_gain"]:
+                    rows.append((sw.gain, sw.starts, add, drop, sw))
         rows.sort(key=lambda r: -r[0])
-        # Neck and neck with the best move: prefer the easier schedule.
+        # Neck and neck with the best move: prefer one that can be made now, then the easier schedule.
         near = [r for r in rows if r[0] >= rows[0][0] - POLICY["tie_week"]] if rows else []
         if near:
-            best = max(near, key=lambda r: (lg.sos(r[2]) or 1.0, r[0]))
+            best = max(near, key=lambda r: (not r[4].wait, lg.sos(r[2]) or 1.0, r[0]))
             rows.remove(best)
             rows.insert(0, best)
         return rows
 
-    # Best single move first; then re-plan on the roster with that move applied.
-    plan, alts, cur, left = [], [], roster, list(drops)
+    # Best single move first; then re-plan on the roster with that move applied from the day it takes effect.
+    plan, alts, cur, left = [], [], {d: roster for d in days}, list(drops)
     while True:
         rows = rank(cur, left, cands)
         if not rows:
@@ -234,10 +263,22 @@ def plan_moves(lg, a):
         plan.append(best)
         if len(plan) == 1:
             alts = [r for r in rows[1:] if r[3] is best[3]][: a.n]
-        cur = [p for p in cur if p is not best[3]] + [best[2]]
+        cur = {d: [p for p in r if p is not best[3]] + [best[2]] if d >= best[4].effective else r
+               for d, r in cur.items()}
         left = [p for p in left if p is not best[3]]
         cands = [p for p in cands if p is not best[2]]
     return flex, hurt, plan, alts
+
+
+def open_slots(lg, roster, day):
+    """Starting slots our best lineup leaves empty on `day` (slots held by started games count as filled)."""
+    slots = list(lg.slots)
+    for p in roster:
+        if day == lg.today and lg.locked(p, day) and p.lineup_slot in slots:
+            slots.remove(p.lineup_slot)
+    for s in lg.day_projection(roster, day)[1].values():
+        slots.remove(s)
+    return set(slots)
 
 
 def move_tag(lg, r, flex):
@@ -254,10 +295,12 @@ def cmd_advise(lg, a, quiet_header=False):
           + (f"  | core with changed outlook: {', '.join(f'{p.name}{inj(p)}' for p in hurt)}" if hurt else ""))
 
     def show(r):
-        wk, starts, add, drop = r
-        print(f"  MOVE +{add.name} / -{drop.name}{move_tag(lg, r, flex)}: week {wk:+.0f} FP, form {add.form:.1f} vs {drop.form:.1f}, "
+        wk, starts, add, drop, sw = r
+        when = timing_str(lg, sw, add, drop)
+        print(f"  {'WAIT' if sw.wait else 'MOVE'} +{add.name} / -{drop.name}{move_tag(lg, r, flex)}: week {wk:+.0f} FP, form {add.form:.1f} vs {drop.form:.1f}, "
               f"{starts_str(starts)}, SOS {sos_str(lg, add).strip()}"
               f"{' (waivers)' if add.status == 'WAIVERS' else ''}{inj(add)}")
+        print(f"    by day: {days_str(sw.days)}" + (f" · {when}" if when else ""))
 
     if not plan:
         print("No move clears the bar. Hold.")

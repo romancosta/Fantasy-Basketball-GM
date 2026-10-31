@@ -638,23 +638,62 @@ class League:
         games = self.remaining_games(pl)
         return sum(self.matchup_factor(pl, d) for d in games) / len(games) if games else None
 
+    def next_game(self, pl):
+        """Date of pl's next game that hasn't tipped yet (this week or later), or None."""
+        return min((d for d in self.games[pl.pro_team] if d > self.today or (d == self.today and not self.locked(pl, d))),
+                   default=None)
+
+    def swap_effective(self, add, drop):
+        """Earliest day an add/drop can take effect: today, or the next day when the drop's game today has already
+        tipped (his points stay ours, his spot frees from tomorrow). A waiver claim and its drop process together on
+        the claim day."""
+        day = self.today + dt.timedelta(days=1) if self.locked(drop, self.today) else self.today
+        return max(day, self.available_date(add))
+
+    def swap_days(self, add, drop, roster, effective):
+        """[(date, FP gain, add's slot or None)] on current form for each remaining day from `effective`, the
+        swap's first day. roster: a list, or {date: roster on that date} when earlier moves change it mid-week."""
+        out = []
+        with self.form_basis():
+            for d in self.remaining_days():
+                if d < effective:
+                    continue
+                cur = roster[d] if isinstance(roster, dict) else roster
+                new = [p for p in cur if p is not drop] + [add]
+                after, lineup = self.day_projection(new, d)
+                out.append((d, after - self.day_projection(cur, d)[0], lineup.get(add)))
+        return out
+
     def swap_value(self, add, drop, roster=None):
         """(rest-of-week FP gain on current form, ROS rate gain)."""
-        wk, _ = self.evaluate_swap(add, drop, roster)
-        return wk, add.rate - drop.rate
+        return self.evaluate_swap(add, drop, roster).gain, add.rate - drop.rate
 
     def evaluate_swap(self, add, drop, roster=None):
-        """Add `add` for `drop` on `roster` (default: ours), judged on current form and this week's
-        schedule. Returns (week FP gain, [(date, slot) for each remaining day the add starts])."""
+        """Add `add` for `drop` on `roster` (default: ours), judged day by day on current form and this week's schedule.
+        Only days on which the move is in effect count. If the drop still has a game to play today, making the move now
+        costs that game; when today's gain is negative the move is timed for after his game (`wait`), so the gain never
+        relies on losing his points. Returns a Swap (see the class)."""
         roster = roster or self.roster()
-        avail = {add: self.available_date(add)}
-        new = [p for p in roster if p is not drop] + [add]
-        with self.form_basis():
-            base = self.week_projection(roster)[2]
-            now = self.week_projection(new, available_from=avail)[2]
-            starts = []
-            for d in self.remaining_days():
-                lineup = self.day_projection(new, d, avail)[1]
-                if add in lineup:
-                    starts.append((d, lineup[add]))
-        return now - base, starts
+        first = self.swap_effective(add, drop)
+        now = self.swap_days(add, drop, roster, first)
+        days, wait = now, False
+        if now and now[0][0] == self.today and now[0][1] < -1e-6:
+            days, wait = now[1:], True
+        effective = days[0][0] if days else first + dt.timedelta(days=1 if wait else 0)
+        add_first = next((d for d in self.remaining_games(add) if d >= effective), None)
+        return Swap(sum(g for _, g, _ in days), [(d, s) for d, _, s in days if s is not None],
+                    [(d, g) for d, g, _ in days], effective, wait, sum(g for _, g, _ in now),
+                    [(d, g) for d, g, _ in now], add_first)
+
+
+class Swap(tuple):
+    """evaluate_swap result. Unpacks as (gain, starts) for older callers.
+    gain: FP this week at the chosen timing · starts: [(date, slot)] the add starts · days: [(date, FP gain)] ·
+    effective: first day the move counts · wait: True = make it after the drop's game today · now_gain / now_days:
+    the same if made immediately · add_first: the add's first game once the move is in effect (None: no game left)."""
+
+    def __new__(cls, gain, starts, days, effective, wait, now_gain, now_days, add_first):
+        self = super().__new__(cls, (gain, starts))
+        self.gain, self.starts, self.days, self.effective = gain, starts, days, effective
+        self.wait, self.now_gain, self.now_days, self.add_first = wait, now_gain, now_days, add_first
+        return self

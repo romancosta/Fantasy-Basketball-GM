@@ -7,7 +7,7 @@ import re
 from . import espn, health, lookahead, season, signals, tracking
 from .config import BENCH, CONFIG, DECIDED_LABEL, IR, OUTLOOK, POLICY
 from .fmt import inj, short_name, table
-from .gm import move_tag, plan_moves, pos
+from .gm import days_str, move_tag, plan_moves, pos, timing_str
 from .model import hungarian_max
 
 
@@ -316,17 +316,21 @@ def roster_moves(lg, a, decided):
     elif not plan:
         print(f"- **Hold** · no move adds {POLICY['flex_min_week_gain']:.0f}+ FP this week.")
     for r in plan:
-        wk, starts, add, drop = r
+        wk, starts, add, drop, sw = r
+        when = timing_str(lg, sw, add, drop)
         print(f"- **+{add.name} / −{drop.name}**{move_tag(lg, r, flex)}: **{wk:+.0f} FP this week** · "
               f"form {add.form:.1f} vs {drop.form:.1f} · {len(starts)} start{'s' * (len(starts) != 1)}"
               f"{' · waivers' if add.status == 'WAIVERS' else ''}{inj(add)}")
+        print(f"  - By day: {days_str(sw.days)}" + (f" · ⏳ **Not now: {when}** (moving now: {days_str(sw.now_days)} = {sw.now_gain:+.0f})"
+                                                     if sw.wait else f" · {when}" if when else ""))
         if POLICY["report_lookahead"]:
             ahead = range(1, POLICY["lookahead_weeks"] + 1)
             print(f"  - Games in the next {len(ahead)} weeks: +{short_name(add.name)} "
                   + "/".join(str(lookahead.player_games(lg, add, o)) for o in ahead)
                   + f" vs −{short_name(drop.name)} " + "/".join(str(lookahead.player_games(lg, drop, o)) for o in ahead))
     if alts:
-        print("  - Backups: " + ", ".join(f"+{r[2].name} ({r[0]:+.0f})" for r in alts))
+        print("  - Backups: " + ", ".join(f"+{r[2].name} ({r[0]:+.0f}{', after tonight' if r[4].wait else ''})"
+                                         for r in alts))
     if plan:
         print("- ↻ Update your lineups after making these moves.")
 
@@ -458,7 +462,14 @@ def opportunity_section(lg):
         elif stars:
             bits = [f"{out} out"]
         print(f"- **{pl.name}** ({pos(pl)}, {lg.pro_abbrev[pl.pro_team]}, form {pl.form:.1f}): about **+{gain:.0f} FP/G** "
-              f"possible · " + " · ".join(bits) + f" · {pl.owned:.0f}% owned{inj(pl)}")
+              f"possible · " + " · ".join(bits) + f" · {pl.owned:.0f}% owned · {next_game_str(lg, pl)}{inj(pl)}")
+
+
+def next_game_str(lg, pl):
+    """'next game Sun 11/01 (1 left this week)': games that have tipped don't count."""
+    nxt = lg.next_game(pl)
+    left = lg.games_left(pl)
+    return (f"next game {nxt:%a %m/%d}" if nxt else "no game scheduled") + f" ({left} left this week)"
 
 
 def overview(names, me, opp, rec, compare, proj, week):

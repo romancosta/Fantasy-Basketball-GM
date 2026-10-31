@@ -50,6 +50,13 @@ Global flags (before the command): `--fresh` (skip 5-min cache), `--mode aggress
 - Flex moves are judged on **this matchup week and current form** (last-15 blended with the rate), not rest-of-season.
   A move needs >= 10 projected FP added to the week, from starts the add really gets: the week projection runs the
   lineup optimizer over the 10 starting slots, so an add whose position is full or who has no useful games gets nothing.
+- Swaps are valued **day by day**, counting only days the move is in effect. If the drop still has an unplayed game
+  today and making the move now would lose FP today, the move is timed for **after his game tonight** (report: ⏳ "Not
+  now: drop after X's game tonight", advise: WAIT, swap verdict: MOVE AFTER TONIGHT) with the add's first game date;
+  it is never shown as a do-now gain that relies on losing his game. A drop whose game has tipped, or a waiver claim
+  (the drop processes with the claim), counts from the next open day. Each move shows its by-day gain (e.g. `Sun: +45`,
+  plus the move-now breakdown when waiting). Candidates include adds who play on days our lineup has an empty slot;
+  among near-ties a move that can be made now wins over one that waits.
 - The tool recommends the **best single move first**, then re-plans with that move applied for any other flex spot.
   Alternatives are other adds for the same spot. Neck-and-neck (within 3 FP): prefer the easier SOS.
 - Move frequency is not a concern - churn flex spots as often as it pays.
@@ -139,7 +146,7 @@ Prints the finished report in markdown, including two overview sentences generat
   role may be growing. Two signals, taking the larger rather than adding them: a minutes surge (last 5 games +5 mpg over the
   10 before; players kept ~66% of the jump next 5 games and beat baseline by ~19%), or a star teammate (rate 40+) who is out
   (bench players scored ~27% more without a star, rotation players ~12%; constants are shaded down in config). Shows the top 5
-  with an estimated FP/G uplift. Informational only: it does not feed `advise` or the move ranking.
+  with an estimated FP/G uplift, the next game that hasn't tipped and the games left this week. Informational only: it does not feed `advise` or the move ranking.
 - **Accuracy data capture**: besides `snapshot-DATE.json` (v2: each player's projection, availability and rest odds, plus
   `me`/`opp`), every nightly run saves `actuals-DATE.json` for the day just played (team points, each player's points, bench
   flag, and the winner when the week ended). A snapshot and actuals file with the same date form one scored day. Both are kept for
