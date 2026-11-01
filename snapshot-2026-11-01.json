@@ -1,0 +1,46 @@
+{
+ "date": "2026-11-01",
+ "me": 31,
+ "opp": 5,
+ "period": 2,
+ "teams": {
+  "31": {
+   "day": 86.9,
+   "players": {
+    "Michael Porter Jr.": {
+     "avail": 1.0,
+     "lineup": true,
+     "proj": 41.4,
+     "rest": 0.188
+    },
+    "RJ Barrett": {
+     "avail": 1.0,
+     "lineup": true,
+     "proj": 45.5,
+     "rest": 0.019
+    }
+   },
+   "week": 1743.9
+  },
+  "5": {
+   "day": 113.2,
+   "players": {
+    "Austin Reaves": {
+     "avail": 1.0,
+     "lineup": true,
+     "proj": 51.8,
+     "rest": 0.017
+    },
+    "Jayson Tatum": {
+     "avail": 1.0,
+     "lineup": true,
+     "proj": 61.4,
+     "rest": 0.036
+    }
+   },
+   "week": 1598.2
+  }
+ },
+ "version": 2,
+ "win_prob": 0.99575
+}

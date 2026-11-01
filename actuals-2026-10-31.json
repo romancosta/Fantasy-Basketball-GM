@@ -1,0 +1,77 @@
+{
+ "date": "2026-10-31",
+ "final": false,
+ "period": 2,
+ "teams": {
+  "31": {
+   "day": 430.0,
+   "players": {
+    "Alperen Sengun": {
+     "bench": false,
+     "pts": 64.0
+    },
+    "Damian Lillard": {
+     "bench": false,
+     "pts": 50.0
+    },
+    "Domantas Sabonis": {
+     "bench": false,
+     "pts": 71.0
+    },
+    "Donovan Clingan": {
+     "bench": false,
+     "pts": 31.0
+    },
+    "Jabari Smith Jr.": {
+     "bench": false,
+     "pts": 72.0
+    },
+    "Jaylen Brown": {
+     "bench": false,
+     "pts": 40.0
+    },
+    "Jonathan Kuminga": {
+     "bench": false,
+     "pts": 50.0
+    },
+    "Shai Gilgeous-Alexander": {
+     "bench": false,
+     "pts": 52.0
+    }
+   },
+   "total": 1227.0
+  },
+  "5": {
+   "day": 256.0,
+   "players": {
+    "Brandon Miller": {
+     "bench": false,
+     "pts": 58.0
+    },
+    "Dylan Harper": {
+     "bench": false,
+     "pts": 64.0
+    },
+    "Lauri Markkanen": {
+     "bench": false,
+     "pts": 39.0
+    },
+    "Tyler Herro": {
+     "bench": false,
+     "pts": 31.0
+    },
+    "Zach LaVine": {
+     "bench": false,
+     "pts": 16.0
+    },
+    "Zion Williamson": {
+     "bench": false,
+     "pts": 48.0
+    }
+   },
+   "total": 1229.0
+  }
+ },
+ "version": 2,
+ "winner": null
+}
