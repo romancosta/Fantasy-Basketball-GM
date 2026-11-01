@@ -5,9 +5,9 @@ import io
 import re
 
 from . import espn, health, lookahead, season, signals, tracking
-from .config import BENCH, CONFIG, DECIDED_LABEL, IR, OUTLOOK, POLICY
+from .config import BENCH, CONFIG, DECIDED_LABEL, IR, OUTLOOK, POLICY, SLOT_NAMES
 from .fmt import inj, short_name, table
-from .gm import days_str, move_tag, plan_moves, pos, timing_str
+from .gm import bench_calls, bench_str, days_str, gain_str, move_tag, plan_moves, pos, timing_str
 from .model import hungarian_max
 
 
@@ -304,35 +304,72 @@ def ir_section(lg):
         print(line)
 
 
+def after_moves(lg, plan, day):
+    """Our roster on `day` once the planned moves that are in effect by then are made."""
+    roster = list(lg.roster())
+    for _, _, add, drop, sw in plan:
+        if sw.effective <= day:
+            roster = [p for p in roster if p is not drop] + [add]
+    return roster
+
+
+def move_lines(lg, plan, alts, flex):
+    """Markdown bullets for planned streaming moves (shared by the nightly and the evening check)."""
+    out = []
+    for r in plan:
+        _, starts, add, drop, sw = r
+        when = timing_str(lg, sw, add, drop)
+        slot = f" · starts {', '.join(f'{d:%a} {SLOT_NAMES[s]}' for d, s in starts)}" if starts else ""
+        line = (f"- **+{add.name} / −{drop.name}**{move_tag(lg, r, flex)}: **{gain_str(sw)}** · "
+                f"form {add.form:.1f} vs {drop.form:.1f}{slot}{' · waivers' if add.status == 'WAIVERS' else ''}{inj(add)}")
+        if sw.wait:
+            line += (f"\n  - ⏳ **Not now: {when}** (moving now: {days_str(sw.now_days)} = {sw.now_gain:+.0f})")
+        elif when:
+            line += f" · {when}"
+        if len(sw.days) > 1:
+            line += f"\n  - By day: {days_str(sw.days)}"
+        if POLICY["report_lookahead"]:
+            ahead = range(1, POLICY["lookahead_weeks"] + 1)
+            line += (f"\n  - Games in the next {len(ahead)} weeks: +{short_name(add.name)} "
+                     + "/".join(str(lookahead.player_games(lg, add, o)) for o in ahead)
+                     + f" vs −{short_name(drop.name)} " + "/".join(str(lookahead.player_games(lg, drop, o)) for o in ahead))
+        out.append(line)
+    if alts:
+        out.append("  - Backups: " + ", ".join(f"+{r[2].name} ({r[0]:+.0f}{', after tonight' if r[4].wait else ''})"
+                                             for r in alts))
+    return out
+
+
+def bench_line(lg, roster, day, label):
+    """'- 🪑 **Bench today:** ...' when more of our players have a game than can start, else ''."""
+    calls = bench_calls(lg, roster, day)
+    return f"- 🪑 **Bench {label}:** {bench_str(lg, calls)}" if calls else ""
+
+
 def roster_moves(lg, a, decided):
     print("\n## Roster moves")
     flex, _, plan, alts = plan_moves(lg, a)
     if lg.today.weekday() == 0:
         print("- 📋 New week: set your lineups for the week.")
-    print("- Flex: " + (", ".join(f"{q.name} (form {q.form:.1f})" for q in flex) or "none"))
+    print("- Streaming spots: " + (", ".join(f"{q.name} (form {q.form:.1f})" for q in flex) or "none"))
     if decided:
-        print(f"- **Skip** · week {lg.matchup_period} is decided; this week's moves can't change the result.")
-        plan, alts = [], []
+        # A decided week only blocks moves judged on this week's games; one for next week's first game still counts.
+        kept = [r for r in plan if r[4].effective > lg.week_days[-1]]
+        if len(kept) < len(plan):
+            print(f"- **Skip** · week {lg.matchup_period} is decided; this week's moves can't change the result.")
+        plan, alts = kept, ([r for r in alts if r[4].effective > lg.week_days[-1]] if kept else [])
     elif not plan:
-        print(f"- **Hold** · no move adds {POLICY['flex_min_week_gain']:.0f}+ FP this week.")
-    for r in plan:
-        wk, starts, add, drop, sw = r
-        when = timing_str(lg, sw, add, drop)
-        print(f"- **+{add.name} / −{drop.name}**{move_tag(lg, r, flex)}: **{wk:+.0f} FP this week** · "
-              f"form {add.form:.1f} vs {drop.form:.1f} · {len(starts)} start{'s' * (len(starts) != 1)}"
-              f"{' · waivers' if add.status == 'WAIVERS' else ''}{inj(add)}")
-        print(f"  - By day: {days_str(sw.days)}" + (f" · ⏳ **Not now: {when}** (moving now: {days_str(sw.now_days)} = {sw.now_gain:+.0f})"
-                                                     if sw.wait else f" · {when}" if when else ""))
-        if POLICY["report_lookahead"]:
-            ahead = range(1, POLICY["lookahead_weeks"] + 1)
-            print(f"  - Games in the next {len(ahead)} weeks: +{short_name(add.name)} "
-                  + "/".join(str(lookahead.player_games(lg, add, o)) for o in ahead)
-                  + f" vs −{short_name(drop.name)} " + "/".join(str(lookahead.player_games(lg, drop, o)) for o in ahead))
-    if alts:
-        print("  - Backups: " + ", ".join(f"+{r[2].name} ({r[0]:+.0f}{', after tonight' if r[4].wait else ''})"
-                                         for r in alts))
+        nxt = lg.game_days(lg.today, 1)
+        print(f"- **Hold** · no move adds {POLICY['stream_min_gain']:.0f}+ FP"
+              + (f" on {nxt[0]:%a %m/%d}." if nxt else "."))
+    for line in move_lines(lg, plan, alts, flex):
+        print(line)
+    bench = bench_line(lg, after_moves(lg, plan, lg.today), lg.today, "today" + (" (after these moves)" if
+                       any(r[4].effective <= lg.today for r in plan) else ""))
+    if bench:
+        print(bench)
     if plan:
-        print("- ↻ Update your lineups after making these moves.")
+        print("- ↻ Hit Auto-set on ESPN after making these moves.")
 
 
 def season_forecast(lg, p_me):
@@ -369,8 +406,9 @@ def season_forecast(lg, p_me):
     return {"sim": sim, "rec": season.standings(sched, lg.matchup_period, ids), "rival": rival, "next": upcoming}
 
 
-def league_rows(power, prev_order, rec, sim, names, me, rival):
-    """Table rows, best power first: rank with its move since yesterday, team, record, power, last-7 trend, playoff odds."""
+def league_rows(power, prev_order, rec, sim, names, me, rival, starts=None):
+    """Table rows, best power first: rank with its move since yesterday, team, record, power, last-7 trend, starts used
+    over the last 7 days, playoff odds."""
     rows = []
     for i, (tid, t) in enumerate(power):
         d = prev_order[tid] - i if prev_order else 0
@@ -378,8 +416,9 @@ def league_rows(power, prev_order, rec, sim, names, me, rival):
         name = f"**{names[tid]}**" if tid == me else f"{names[tid]} 👑" if tid == rival else names[tid]
         trend = "🔥" if t["l7"] > 1.05 * t["pace"] else "🧊" if t["l7"] < 0.95 * t["pace"] else ""
         rr = rec[tid]
+        used = f"{sum(day.get(tid, 0) for day in starts.values())}" if starts else "–"
         rows.append([f"{i + 1} {move}", name, f"{rr['w']}-{rr['l']}" + (f"-{rr['t']}" if rr["t"] else ""),
-                     f"{t['power']:,.0f}", f"{t['l7']:,.0f}{trend}", f"{sim['playoff'][tid]:.0%}"])
+                     f"{t['power']:,.0f}", f"{t['l7']:,.0f}{trend}", used, f"{sim['playoff'][tid]:.0%}"])
     return rows
 
 
@@ -404,6 +443,24 @@ def league_summary(sim, me, names, rival, upcoming):
     return " · ".join(parts)
 
 
+def rival_line(lg, rival, starts):
+    """'👑 The Godfather, last 24h: +Bailey, +Achiuwa · −Nembhard · started 10/10 yesterday', or ''."""
+    if rival is None:
+        return ""
+    moves = [t for t in lg.transactions(1) if t["team"] == rival and t["when"] >= lg.now - dt.timedelta(hours=24)]
+
+    def name(t):
+        return short_name(lg.players[t["player"]].name) if t["player"] in lg.players else str(t["player"])
+    adds = ", ".join("+" + name(t) for t in moves if t["kind"] == "ADD")
+    drops = ", ".join("−" + name(t) for t in moves if t["kind"] == "DROP")
+    parts = [" · ".join(x for x in (adds, drops) if x) or "no adds or drops"]
+    yday = lg.today - dt.timedelta(days=1)
+    if starts and yday in starts:
+        parts.append(f"started {starts[yday].get(rival, 0)}/{len(lg.slots)} yesterday "
+                     f"(us {starts[yday].get(CONFIG['my_team_id'], 0)})")
+    return f"👑 **{lg.team_names[rival]}**, last 24h: " + " · ".join(parts)
+
+
 def league_section(lg, p_me):
     """The league at a glance: power ranking with record, trend and playoff odds, plus one summary line."""
     me = CONFIG["my_team_id"]
@@ -411,11 +468,21 @@ def league_section(lg, p_me):
     f = season_forecast(lg, p_me)
     power = lg.power_rankings()
     prev = {tid: i for i, (tid, _) in enumerate(lg.power_rankings(lg.today - dt.timedelta(days=1)))}
+    starts = {}
+    try:
+        starts = lg.starts_used(7)
+    except Exception as exc:   # noqa: BLE001 - the table is still useful without the starts column
+        health.failed("starts used (league rosters by day)", exc)
     print(f"\n## League · week {lg.matchup_period} · top {n_playoff} make the playoffs")
-    table(["# (vs yday)", "Team", "W-L", "Power", "L7", "Playoffs"],
-          league_rows(power, prev, f["rec"], f["sim"], lg.team_names, me, f["rival"]), text_cols=2)
+    table(["# (vs yday)", "Team", "W-L", "Power", "L7", "Starts L7", "Playoffs"],
+          league_rows(power, prev, f["rec"], f["sim"], lg.team_names, me, f["rival"], starts), text_cols=2)
     print("\n" + league_summary(f["sim"], me, lg.team_names, f["rival"], f["next"]))
-    print("\n_FP/week · Power = results + roster · odds simulate the remaining weeks (seeding: record, then fewer points against)._")
+    rl = rival_line(lg, f["rival"], starts)
+    if rl:
+        print("\n" + rl)
+    print(f"\n_FP/week · Power = results + roster · Starts L7 = players who played in a starting slot, last "
+          f"{len(starts) or 7} days (max {len(lg.slots) * (len(starts) or 7)}) · odds simulate the remaining weeks "
+          "(seeding: record, then fewer points against)._")
 
 
 def lookahead_section(lg):

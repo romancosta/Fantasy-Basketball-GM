@@ -19,6 +19,7 @@ python3 -m fbgm rivals [--days 7]  # other teams' adds/drops
 python3 -m fbgm recap [--date D]   # last night: points per player for both matchup teams
 python3 -m fbgm nightly            # morning report (markdown): outlook, matchup grid, moves, power rankings
 python3 -m fbgm pretip             # before tonight's games lock: lineup changes, empty slots, starters who might sit (quiet if fine)
+python3 -m fbgm evening            # ~10:30pm, after tonight's tips: streaming moves for the next game day (quiet if none)
 python3 -m fbgm check              # scoring + date-mapping self-test
 ```
 Global flags (before the command): `--fresh` (skip 5-min cache), `--mode aggressive`, `--today YYYY-MM-DD`.
@@ -42,27 +43,32 @@ Global flags (before the command): `--fresh` (skip 5-min cache), `--mode aggress
   over eligible slots). A pickup's weekly value is only the starts it actually adds, not raw games.
 
 ## GM policy (owner's instructions)
-- **Flex spots first.** Flex = players we added in the last 7 days and still roster (newest first, max 2; 3 in
-  aggressive mode). No recent adds -> the lowest-rated player. Everyone else is core and is only dropped when his
-  outlook is badly hurt (OUT/DOUBTFUL, availability <= 0.25, no open IR slot) or for a **proven upgrade**: an add with
-  8+ games, a rest-of-season rate 3+ FP/G higher, and current form at least as good. Never drop a core player for
-  someone less proven.
-- Flex moves are judged on **this matchup week and current form** (last-15 blended with the rate), not rest-of-season.
-  A move needs >= 10 projected FP added to the week, from starts the add really gets: the week projection runs the
-  lineup optimizer over the 10 starting slots, so an add whose position is full or who has no useful games gets nothing.
-- Swaps are valued **day by day**, counting only days the move is in effect. If the drop still has an unplayed game
-  today and making the move now would lose FP today, the move is timed for **after his game tonight** (report: ⏳ "Not
-  now: drop after X's game tonight", advise: WAIT, swap verdict: MOVE AFTER TONIGHT) with the add's first game date;
-  it is never shown as a do-now gain that relies on losing his game. A drop whose game has tipped, or a waiver claim
-  (the drop processes with the claim), counts from the next open day. Each move shows its by-day gain (e.g. `Sun: +45`,
-  plus the move-now breakdown when waiting). Candidates include adds who play on days our lineup has an empty slot;
-  among near-ties a move that can be made now wins over one that waits.
-- The tool recommends the **best single move first**, then re-plans with that move applied for any other flex spot.
-  Alternatives are other adds for the same spot. Neck-and-neck (within 3 FP): prefer the easier SOS.
-- Move frequency is not a concern - churn flex spots as often as it pays.
+- **9 core + 3 streaming spots** (The Godfather's split). Core = the top 9 on the active roster by rest-of-season
+  rate (8 in aggressive mode, i.e. 4 streaming spots). Everyone else holds a streaming spot and is rotated daily. A core
+  player is only dropped when his outlook is badly hurt (OUT/DOUBTFUL, availability <= 0.25, no open IR slot) or for a
+  **proven upgrade**: an add with 8+ games, a rest-of-season rate 3+ FP/G higher, and current form at least as good.
+  A pickup who out-rates a core player becomes core himself.
+- Why: in weeks 1-2 The Godfather's drafted players scored *less* than ours (2,799 vs 3,241 FP in starting slots) but his
+  pickups added 1,163 FP (28 starts at ~41.5 FP) to our 242: he fills all 10 slots on heavy NBA nights. A 21-day
+  simulation on our roster: 9+3 beat 10+2 in 99% of runs (about +85 FP/week), about +320 FP/week over holding.
+- Streaming moves are judged on **current form over the next game day only** (`stream_horizon_days` = 1): today's
+  games in the morning, tomorrow's once tonight's have tipped, across week boundaries (Sunday night -> Monday). The
+  simulation scored a 1-day horizon above 2, 3 or rest-of-week (rest-of-week cost ~250 FP/week): moves are free and
+  dropped players can be re-added after 24h, so each day's best fit wins. A move needs >= 10 FP on that day, from a
+  start the add really gets: the optimizer only uses slots matching his ESPN-eligible positions, so an add whose
+  positions are full gets nothing.
+- Timing: if the drop still has an unplayed game today and making the move now would lose FP today, the move is timed
+  for **after his game tonight** (report: ⏳ "Not now: drop after X's game tonight", advise: WAIT, swap verdict: MOVE AFTER
+  TONIGHT), judged on the next game day. A drop whose game has tipped, a waiver claim, or a move where neither player
+  has a game left today counts from the next game day. Moves for today rank ahead of moves for later days; among
+  near-ties for the same day a move that can be made now wins over one that waits, then the easier SOS.
+- The tool recommends the **best single move first**, then re-plans with that move applied for any other streaming
+  spot. Alternatives are other adds for the same spot.
+- Move frequency is not a concern - churn streaming spots as often as it pays (expect ~2 moves a day).
+- Ownership % (ESPN rostered share) is shown for reference only; it is never an input to who to add or drop.
 - Never recommend players who are OUT or haven't played this season.
 - If `drops` shows **3+ UNDERPERFORMING** players (8+ games, season < 80% and last-15 < 85% of prior), tell the owner and
-  propose `--mode aggressive` (up to 3 flex spots). Don't switch without their OK.
+  propose `--mode aggressive` (8 core, 4 streaming spots). Don't switch without their OK.
 - Always open/use an empty IR slot for an OUT player before dropping anyone.
 
 ## Roster freshness (important for the 2am run)
@@ -104,7 +110,7 @@ Prints the finished report in markdown, including two overview sentences generat
 - **IR watch**: reads Rotowire news for players in our IR slot every run (return timelines like "at least four weeks",
   "mid-December", ESPN status upgrades). Silent while there is no timeline or a return is far off. A timeline's first
   appearance is announced once (re-announced if it moves 3+ days); from `ir_window_days` (14) out, every report shows the
-  target date, first game and which flex player to clear. `state/ir_watch.json` remembers the last estimate. **Change alert** (any distance out): if the estimate moves
+  target date, first game and which streaming-spot player to clear. `state/ir_watch.json` remembers the last estimate. **Change alert** (any distance out): if the estimate moves
   `ir_shift_days` (3) or more, either way, it shows ⚠️ PUSHED BACK / MOVED UP with old vs new date; if a previously
   announced timeline disappears (setback, season-ending news) it shows 🚨.
 - **Run health** (`fbgm/health.py`): a failure in one report section is contained (the section prints "Unavailable this
@@ -113,13 +119,23 @@ Prints the finished report in markdown, including two overview sentences generat
   mismatch - add a "⚠️ data issues" banner under the outlook line and a closing **Health** section. An empty roster or
   missing opponent stops the run with a final `FBGM ERROR (...)` line. `python3 -m fbgm watchdog` (git only) checks the
   `nightly-state` branch for today's `nightly state` commit; run it from a separate routine (docs/watchdog-routine.md).
+- **Bench call** (Roster moves): on nights when more of our players have a game than can start, `🪑 Bench today:` names
+  who sits, his projection and why: `lowest projection`, or a position logjam (`Lillard 46 (PG/G held by SGA, Murray;
+  Barrett 38 starts)`). It is computed after the recommended moves. ESPN's Auto-set uses ESPN's projections, so it can
+  disagree; the pre-tip check catches a 10+ FP difference.
+- **Evening check** (`evening`, `fbgm/evening.py`, docs/evening-routine.md): runs ~10:30pm ET, after tonight's tips.
+  Lists streaming moves judged on the next game day (the window when The Godfather makes most of his adds) with the
+  bench call for that day, or `EVENING OK`. Skips a decided week's moves.
+- **Starts L7 + rival line** (League section): starts used per team over the last 7 days (players who played in a
+  starting slot, max 70), and The Godfather's adds/drops in the last 24h with his starts yesterday vs ours. `rivals`
+  lists every team's adds/drops over any window (one transactions request per scoring period).
 - **Pre-tip check** (`pretip`, `fbgm/pretip.py`): uses each player's expected FP *for tonight* (rate x availability x
   chance he sits, with one-game rulings from news counted as OUT tonight), keeps locked players where they are, and reports
   `PRETIP OK` (nothing to do), `WATCH` (set, but a starter might sit and a bench player could cover him), or `ACTION`
   (slot changes worth `pretip_min_gain` (10) FP tonight, or an IR player ESPN lists as playable), or `PICKUP` (lineup is
   set but an optional add earns points).
   It only alerts when points are actually at stake: a star who is OUT with no bench cover is silent unless a free
-  agent adds 10+ FP tonight AND a flex-pool player who isn't starting tonight can be cut for him (core players, idle or injured, are never offered); at-risk starters are
+  agent adds 10+ FP tonight AND a streaming-spot player who isn't starting tonight can be cut for him (core players, idle or injured, are never offered); at-risk starters are
   only listed when someone could cover; tiny reshuffles are ignored. Changes are only possible for games not yet started.
   Scheduled by docs/pretip-routine.md.
 - **Playoff odds** (`fbgm/season.py`, shown in the League table): standings from completed weeks, and playoff odds from 4,000 simulations of every

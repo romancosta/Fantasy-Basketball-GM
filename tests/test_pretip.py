@@ -2,7 +2,9 @@ import datetime as dt
 import unittest
 
 from fbgm import pretip
-from fbgm.config import AVAILABILITY, BENCH, IR
+from unittest import mock
+
+from fbgm.config import AVAILABILITY, BENCH, IR, POLICY
 from fbgm.model import ET, League
 
 TODAY = dt.date(2026, 10, 28)
@@ -27,7 +29,7 @@ class P:
         return AVAILABILITY[self.injury]
 
 
-def make_lg(players, free_agents=(), games=None, now=NOW, flex=()):
+def make_lg(players, free_agents=(), games=None, now=NOW):
     """A League without the ESPN fetch: just the attributes the pre-tip check reads."""
     lg = League.__new__(League)
     lg.now, lg.today, lg.slots = now, now.date(), list(SLOTS)
@@ -36,12 +38,21 @@ def make_lg(players, free_agents=(), games=None, now=NOW, flex=()):
     lg.roster = lambda team_id=None: lg.rosters[31]
     lg.free_agents = list(free_agents)
     lg._rest_watch = set()
-    lg._recent_adds = {p.id: now for p in flex}   # none: the flex pool falls back to the lowest-rated player
     lg._news = {p.id: [] for p in list(players) + list(free_agents)}
     return lg
 
 
+def core(n):
+    """These rosters are tiny: the top n by rate are core, the rest hold streaming spots (the pickup drop pool)."""
+    return mock.patch.dict(POLICY, {"core_size": {"conservative": n, "aggressive": n}})
+
+
 class Pretip(unittest.TestCase):
+    def setUp(self):
+        patch = core(2)
+        patch.start()
+        self.addCleanup(patch.stop)
+
     def test_clean_lineup_is_ok(self):
         lg = make_lg([P("Guard", {0}, 0), P("Big", {1}, 1), P("Bench", {0, 1}, BENCH, 20)])
         status, lines = pretip.pretip(lg)
@@ -129,11 +140,14 @@ class TwoBigsOut(unittest.TestCase):
 
     def setUp(self):
         P._ids = 0
+        patch = core(3)
+        patch.start()
+        self.addCleanup(patch.stop)
         self.orig = pretip.dead_slots.__globals__["SLOT_NAMES"]
 
-    def lg(self, bench, fas, flex=()):
+    def lg(self, bench, fas):
         lg = make_lg([P("Guard", {0}, 0, 50), P("Zubac", {4, 9}, 4, 45, injury="OUT"),
-                      P("Duren", {4, 9}, 9, 53, injury="OUT")] + bench, free_agents=fas, flex=flex,
+                      P("Duren", {4, 9}, 9, 53, injury="OUT")] + bench, free_agents=fas,
                      games={1: {TODAY: EARLY}, 2: {TODAY: LATE}, 3: {}})
         lg.slots = [0, 4, 9]
         return lg
@@ -141,7 +155,7 @@ class TwoBigsOut(unittest.TestCase):
     def test_bench_cover_fills_one_slot_and_pickup_fills_the_other_with_a_different_drop(self):
         a, b = P("Idle A", {0}, BENCH, 20, team=3), P("Idle B", {0}, BENCH, 25, team=3)
         lg = self.lg([P("Bench Big", {4, 9}, BENCH, 30), a, b],
-                     [P("FA One", {4, 9}, None, 35, status="FREEAGENT")], flex=[a, b])
+                     [P("FA One", {4, 9}, None, 35, status="FREEAGENT")])
         status, lines = pretip.pretip(lg)
         text = "\n".join(lines)
         self.assertEqual(status, "ACTION")           # the bench big moving in is a real lineup change
@@ -151,7 +165,7 @@ class TwoBigsOut(unittest.TestCase):
     def test_two_pickups_never_cut_the_same_player(self):
         a, b = P("Idle A", {0}, BENCH, 20, team=3), P("Idle B", {0}, BENCH, 25, team=3)
         lg = self.lg([a, b], [P("FA One", {4, 9}, None, 35, status="FREEAGENT"),
-                              P("FA Two", {4, 9}, None, 33, status="FREEAGENT")], flex=[a, b])
+                              P("FA Two", {4, 9}, None, 33, status="FREEAGENT")])
         status, lines = pretip.pretip(lg)
         picks = [ln for ln in lines if ln.startswith("Optional pickup")]
         self.assertEqual(status, "PICKUP")
@@ -162,10 +176,9 @@ class TwoBigsOut(unittest.TestCase):
         self.assertEqual(adds, {"FA One", "FA Two"})
 
     def test_core_bench_player_is_never_the_drop(self):
-        # A star on the bench with no game tonight is not in the flex pool, so he is not offered.
+        # A star on the bench with no game tonight is core, so he is not offered (the streaming spot is a starter).
         star = P("Idle Star", {0}, BENCH, 60, team=3)
-        flex = P("Flex Guy", {0}, None, 10, team=3)
-        lg = self.lg([star], [P("FA One", {4, 9}, None, 35, status="FREEAGENT")], flex=[flex])
+        lg = self.lg([star], [P("FA One", {4, 9}, None, 35, status="FREEAGENT")])
         self.assertEqual(pretip.pretip(lg)[0], "OK")
 
     def test_no_idle_bench_means_no_pickup(self):

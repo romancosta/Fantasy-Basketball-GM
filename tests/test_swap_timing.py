@@ -8,8 +8,19 @@ from types import SimpleNamespace as NS
 from unittest import mock
 
 from fbgm import gm, report
-from fbgm.config import AVAILABILITY, BENCH
+from fbgm.config import AVAILABILITY, BENCH, POLICY
 from fbgm.model import ET, League
+
+# These rosters are tiny: keep one core player so everyone else holds a streaming spot.
+_core = mock.patch.dict(POLICY, {"core_size": {"conservative": 1, "aggressive": 1}})
+
+
+def setUpModule():
+    _core.start()
+
+
+def tearDownModule():
+    _core.stop()
 
 SAT, SUN, TUE = dt.date(2026, 10, 31), dt.date(2026, 11, 1), dt.date(2026, 11, 3)
 WEEK = [dt.date(2026, 10, 26) + dt.timedelta(days=i) for i in range(7)]   # Mon 10/26 - Sun 11/01
@@ -34,7 +45,7 @@ class P:
         return AVAILABILITY[self.injury]
 
 
-def make_lg(roster, fas, games, now, flex=()):
+def make_lg(roster, fas, games, now):
     lg = League.__new__(League)
     lg.now, lg.today, lg.slots, lg.ir_slots = now, now.date(), [0, 1], 0
     lg.games, lg.week_days, lg._defense = defaultdict(dict, games), WEEK, {}
@@ -43,17 +54,16 @@ def make_lg(roster, fas, games, now, flex=()):
     lg.roster = lambda team_id=None: lg.rosters[31]
     lg.free_agents, lg.players, lg.pro_abbrev = list(fas), {}, {1: "GS", 2: "GS", 3: "LAL", 4: "BOS"}
     lg._rest_watch = set()
-    lg._recent_adds = {p.id: now for p in flex}
     return lg
 
 
 def kuminga_case(now=at(SAT, 18), add_games=None):
-    """Sat 10/31: Kuminga (flex, starting) plays tonight at 8:00 PM and not Sunday; Podziemski only plays Sunday."""
+    """Sat 10/31: Kuminga (streaming spot, starting) plays tonight at 8:00 PM and not Sunday; Podziemski only plays Sunday."""
     kuminga = P("Jonathan Kuminga", {0}, 0, 35.0, team=1)
     big = P("Core Big", {1}, 1, 50.0, team=3)
     podz = P("Brandin Podziemski", {0}, None, 45.0, team=2, status="FREEAGENT")
     games = {1: {SAT: at(SAT, 20)}, 2: add_games or {SUN: at(SUN, 15)}, 3: {SAT: at(SAT, 19), SUN: at(SUN, 18)}}
-    return make_lg([kuminga, big], [podz], games, now, flex=[kuminga]), kuminga, podz
+    return make_lg([kuminga, big], [podz], games, now), kuminga, podz
 
 
 def out(fn, *a):
@@ -80,8 +90,8 @@ class SwapTiming(unittest.TestCase):
     def test_report_says_wait_until_after_tonight_not_move_now(self):
         lg, _, _ = kuminga_case()
         text = out(report.roster_moves, lg, NS(mode=None, n=3), None)
-        self.assertIn("**+Brandin Podziemski / −Jonathan Kuminga**: **+45 FP this week**", text)
-        self.assertIn("By day: Sun: +45 · ⏳ **Not now: drop after Kuminga's game tonight (8:00 PM), Podziemski first "
+        self.assertIn("**+Brandin Podziemski / −Jonathan Kuminga**: **+45 FP Sun**", text)
+        self.assertIn("⏳ **Not now: drop after Kuminga's game tonight (8:00 PM), Podziemski first "
                       "plays Sun 11/01** (moving now: Sat: −35, Sun: +45 = +10)", text)
 
     def test_advise_and_swap_label_the_wait(self):
@@ -93,7 +103,7 @@ class SwapTiming(unittest.TestCase):
         self.assertNotIn("MOVE +Brandin", text)
         with mock.patch.object(gm, "header"):
             text = out(gm.cmd_swap, lg, a)
-        self.assertIn("Verdict: MOVE AFTER TONIGHT - flex spot, +45 FP", text)
+        self.assertIn("Verdict: MOVE AFTER TONIGHT - streaming spot, +45 FP Sun", text)
         self.assertIn("moving now: Sat: −35, Sun: +45 = +10", text)
 
     def test_add_who_also_plays_today_moves_now(self):
@@ -101,8 +111,26 @@ class SwapTiming(unittest.TestCase):
         sw = lg.evaluate_swap(podz, kuminga)
         self.assertFalse(sw.wait)
         self.assertEqual(sw.effective, SAT)
-        self.assertEqual(sw.days, [(SAT, 10.0), (SUN, 45.0)])
+        self.assertEqual(sw.days, [(SAT, 10.0)])               # judged on the next game day only
         self.assertEqual(gm.timing_str(lg, sw, podz, kuminga), "")
+
+    def test_longer_horizon_counts_more_game_days(self):
+        lg, kuminga, podz = kuminga_case(add_games={SAT: at(SAT, 19), SUN: at(SUN, 15)})
+        with mock.patch.dict(POLICY, {"stream_horizon_days": 2}):
+            sw = lg.evaluate_swap(podz, kuminga)
+        self.assertEqual(sw.days, [(SAT, 10.0), (SUN, 45.0)])
+        self.assertEqual(gm.gain_str(sw), "+55 FP Sat-Sun")
+
+    def test_horizon_crosses_into_next_week(self):
+        # Sunday night after the games: a pickup for Monday counts even though the matchup week ends tonight.
+        mon = dt.date(2026, 11, 2)
+        kuminga = P("Jonathan Kuminga", {0}, 0, 35.0, team=1)
+        big = P("Core Big", {1}, 1, 50.0, team=3)
+        add = P("Monday Guard", {0}, None, 40.0, team=2, status="FREEAGENT")
+        games = {1: {SUN: at(SUN, 15)}, 2: {mon: at(mon, 19)}, 3: {SUN: at(SUN, 18), mon: at(mon, 19)}}
+        lg = make_lg([kuminga, big], [add], games, at(SUN, 22))
+        sw = lg.evaluate_swap(add, kuminga)
+        self.assertEqual((sw.effective, sw.days, sw.wait), (mon, [(mon, 40.0)], False))
 
     def test_drop_whose_game_has_tipped_counts_from_the_next_day(self):
         lg, kuminga, podz = kuminga_case(now=at(SAT, 21), add_games={SAT: at(SAT, 22), SUN: at(SUN, 15)})
@@ -112,19 +140,27 @@ class SwapTiming(unittest.TestCase):
         self.assertEqual(sw.days, [(SUN, 45.0)])
         self.assertEqual(gm.timing_str(lg, sw, podz, kuminga), "counts from Sun 11/01, Podziemski first plays Sun 11/01")
 
-    def test_drop_idle_today_moves_now(self):
+    def test_neither_plays_today_is_judged_on_the_next_game_day(self):
         lg, kuminga, podz = kuminga_case()
         lg.games[1] = {}
         sw = lg.evaluate_swap(podz, kuminga)
         self.assertFalse(sw.wait)
-        self.assertEqual(sw.days, [(SAT, 0.0), (SUN, 45.0)])
-        self.assertEqual(gm.days_str(sw.days), "Sun: +45")
+        self.assertEqual((sw.effective, sw.days), (SUN, [(SUN, 45.0)]))
+        self.assertEqual(gm.timing_str(lg, sw, podz, kuminga), "counts from Sun 11/01, Podziemski first plays Sun 11/01")
+
+    def test_todays_moves_rank_ahead_of_tomorrows(self):
+        lg, kuminga, podz = kuminga_case()
+        lg.games[1] = {}                                       # Kuminga idle: +Podziemski counts from Sunday (+45)
+        tonight = P("Tonight Guard", {0}, None, 50.0, team=5, status="FREEAGENT")
+        lg.games[5] = {SAT: at(SAT, 21)}
+        lg.free_agents.append(tonight)
+        _, _, plan, _ = gm.plan_moves(lg, NS(mode=None, n=3))
+        self.assertEqual(plan[0][2].name, "Tonight Guard")     # +50 tonight goes first
 
     def test_prefers_a_drop_who_does_not_start_tonight(self):
         lg, kuminga, podz = kuminga_case()
         idle = P("Idle Bench", {0, 1}, BENCH, 5.0, team=4)
         lg.rosters[31].append(idle)
-        lg._recent_adds[idle.id] = lg.now
         _, _, plan, _ = gm.plan_moves(lg, NS(mode=None, n=3))
         self.assertEqual([(r[2].name, r[3].name, r[4].wait) for r in plan], [("Brandin Podziemski", "Idle Bench", False)])
 

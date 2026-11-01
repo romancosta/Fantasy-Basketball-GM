@@ -525,54 +525,80 @@ class League:
         return sum(1 for d in self.remaining_days()
                    if self.plays(pl, d) and not (d == self.today and self.locked(pl, d)))
 
-    def recent_adds(self):
-        """{player id: when} for players we added within flex_recent_days (newest info from ESPN)."""
-        if not hasattr(self, "_recent_adds"):
-            out, txns = {}, []
-            try:
-                cutoff = self.now - dt.timedelta(days=POLICY["flex_recent_days"])
-                # ESPN returns only one scoring period's transactions per request (the current one by default), so
-                # a seven-day look-back is one request per period.
-                sp_now = self.date_sp.get(self.today)
-                periods = range(max(1, sp_now - POLICY["flex_recent_days"]), sp_now + 1) if sp_now else [None]
-                seen = set()
-                for sp in periods:
-                    batch = espn.league("mTransactions2", scoring_period=sp).get("transactions", [])
-                    for t in batch:
-                        if t.get("id") not in seen:
-                            seen.add(t.get("id"))
-                            txns.append(t)
-                for t in txns:
-                    if (t.get("status") != "EXECUTED" or t.get("teamId") != CONFIG["my_team_id"]
-                            or t.get("type") not in ("FREEAGENT", "WAIVER")):
+    def transactions(self, days):
+        """Executed adds and drops by every team over the last `days` days, oldest first:
+        [{"when", "team", "kind" ('ADD'/'DROP'), "player"}]. ESPN returns one scoring period of transactions per request,
+        so this asks for each period in the window. A drop and re-add of the same player by the same team within a few
+        minutes (how ESPN records some undone moves) cancels out."""
+        cache = self.__dict__.setdefault("_txns", {})
+        if days in cache:
+            return cache[days]
+        rows, seen = [], set()
+        try:
+            cutoff = self.now - dt.timedelta(days=days)
+            sp_now = self.date_sp.get(self.today) or max((sp for sp, d in self.sp_date.items() if d < self.today), default=None)
+            periods = range(max(1, sp_now - days), sp_now + 1) if sp_now else [None]
+            for sp in periods:
+                for t in espn.league("mTransactions2", scoring_period=sp).get("transactions", []):
+                    if t.get("id") in seen or t.get("status") != "EXECUTED":
+                        continue
+                    seen.add(t.get("id"))
+                    if t.get("type") not in ("FREEAGENT", "WAIVER", "ROSTER"):
                         continue
                     when = dt.datetime.fromtimestamp(t["proposedDate"] / 1000, ET)
                     if when < cutoff:
                         continue
-                    for it in t["items"]:
-                        if it["type"] == "ADD":
-                            out[it["playerId"]] = max(when, out.get(it["playerId"], when))
-            except Exception as exc:
-                health.failed("recent transactions (flex pool may be wrong)", exc)
-                out = {}
-            self._recent_adds = out
-        return self._recent_adds
+                    for it in t.get("items", []):
+                        # ROSTER transactions are lineup moves, except a plain drop.
+                        if it["type"] == "DROP" or (it["type"] == "ADD" and t["type"] != "ROSTER"):
+                            rows.append({"when": when, "team": t["teamId"], "kind": it["type"], "player": it["playerId"]})
+        except Exception as exc:
+            health.failed("league transactions", exc)
+            rows = []
+        rows.sort(key=lambda r: r["when"])
+        undone = set()
+        for i, r in enumerate(rows):
+            for j in range(i + 1, len(rows)):
+                q = rows[j]
+                if q["when"] - r["when"] > dt.timedelta(minutes=5):
+                    break
+                if (j not in undone and i not in undone and q["team"] == r["team"] and q["player"] == r["player"]
+                        and {q["kind"], r["kind"]} == {"ADD", "DROP"}):
+                    undone |= {i, j}
+                    break
+        cache[days] = [r for i, r in enumerate(rows) if i not in undone]
+        return cache[days]
 
     def flex_pool(self, mode=None):
-        """Spots we're rotating: players we recently added and still have, newest first, up to the
-        mode's cap. No recent adds -> the lowest-rated rostered player (plus near-equals)."""
-        mode = mode or POLICY["mode"]
-        cap = POLICY["flex_slots"][mode]
-        mine = [p for p in self.roster() if p.lineup_slot != IR]
-        adds = self.recent_adds()
-        recent = sorted((p for p in mine if p.id in adds), key=lambda p: adds[p.id], reverse=True)
-        if recent:
-            return recent[:cap]
-        mine.sort(key=lambda p: p.rate)
-        if not mine:
-            return []
-        floor = mine[0].rate + POLICY["flex_margin"]
-        return [p for p in mine if p.rate <= floor][:cap]
+        """Streaming spots: everyone on the active roster outside the top core_size by rest-of-season rate, lowest rate
+        first. The core is only dropped under the core rules (badly hurt, or a proven upgrade)."""
+        size = POLICY["core_size"][mode or POLICY["mode"]]
+        mine = sorted((p for p in self.roster() if p.lineup_slot != IR), key=lambda p: -p.rate)
+        return sorted(mine[size:], key=lambda p: p.rate)
+
+    def starts_used(self, days=7):
+        """{date: {team id: starts}} for the last `days` finished days: players in a starting slot who played (minutes > 0).
+        One roster request per day; past days are cached for good."""
+        out = {}
+        for i in range(days, 0, -1):
+            day = self.today - dt.timedelta(days=i)
+            sp = self.date_sp.get(day)
+            if sp is None:
+                continue
+            data = espn.league("mRoster", scoring_period=sp, ttl=None)
+            counts = {}
+            for t in data.get("teams", []):
+                n = 0
+                for e in t.get("roster", {}).get("entries", []):
+                    if e.get("lineupSlotId") in (BENCH, IR):
+                        continue
+                    stats = e.get("playerPoolEntry", {}).get("player", {}).get("stats", [])
+                    line = next((x for x in stats if x.get("scoringPeriodId") == sp and x.get("statSourceId") == 0
+                                 and x.get("statSplitTypeId") == 5), None)
+                    n += bool(line and (line.get("stats") or {}).get("40"))
+                counts[t["id"]] = n
+            out[day] = counts
+        return out
 
     @contextlib.contextmanager
     def form_basis(self):
@@ -650,37 +676,69 @@ class League:
         day = self.today + dt.timedelta(days=1) if self.locked(drop, self.today) else self.today
         return max(day, self.available_date(add))
 
-    def swap_days(self, add, drop, roster, effective):
-        """[(date, FP gain, add's slot or None)] on current form for each remaining day from `effective`, the
-        swap's first day. roster: a list, or {date: roster on that date} when earlier moves change it mid-week."""
+    def game_days(self, start, n):
+        """The next n dates from `start` with an NBA game still to tip (today counts only while one is left)."""
+        if not hasattr(self, "_game_dates"):
+            last = defaultdict(lambda: None)
+            for g in self.games.values():
+                for d, t in g.items():
+                    last[d] = t if last[d] is None or t > last[d] else last[d]
+            self._game_dates = dict(last)
+        out = []
+        for d in sorted(d for d in self._game_dates if d >= start):
+            if d == self.today and self._game_dates[d] <= self.now:
+                continue
+            out.append(d)
+            if len(out) == n:
+                break
+        return out
+
+    def plan_days(self):
+        """Dates a streaming move made now can be judged on: the next game days from today, plus the horizon after
+        today (for moves that wait until after tonight's game)."""
+        h = POLICY["stream_horizon_days"]
+        return sorted(set(self.game_days(self.today, h)) | set(self.game_days(self.today + dt.timedelta(days=1), h)))
+
+    def swap_days(self, add, drop, roster, dates):
+        """[(date, FP gain, add's slot or None)] on current form for each of `dates`. roster: a list, or {date: roster on
+        that date} when earlier moves change it."""
         out = []
         with self.form_basis():
-            for d in self.remaining_days():
-                if d < effective:
-                    continue
-                cur = roster[d] if isinstance(roster, dict) else roster
+            for d in dates:
+                cur = roster.get(d, roster[max(roster)]) if isinstance(roster, dict) else roster
                 new = [p for p in cur if p is not drop] + [add]
                 after, lineup = self.day_projection(new, d)
                 out.append((d, after - self.day_projection(cur, d)[0], lineup.get(add)))
         return out
 
     def swap_value(self, add, drop, roster=None):
-        """(rest-of-week FP gain on current form, ROS rate gain)."""
+        """(FP gain over the streaming horizon on current form, ROS rate gain)."""
         return self.evaluate_swap(add, drop, roster).gain, add.rate - drop.rate
 
     def evaluate_swap(self, add, drop, roster=None):
-        """Add `add` for `drop` on `roster` (default: ours), judged day by day on current form and this week's schedule.
-        Only days on which the move is in effect count. If the drop still has a game to play today, making the move now
-        costs that game; when today's gain is negative the move is timed for after his game (`wait`), so the gain never
-        relies on losing his points. Returns a Swap (see the class)."""
+        """Add `add` for `drop` on `roster` (default: ours), judged on current form over the next stream_horizon_days
+        game days the move is in effect (any week; today is skipped when neither player has a game left today). If the
+        drop still has a game to play today, making the move now
+        costs that game; when today's gain is negative the move is timed for after his game (`wait`) and judged on the
+        game days after today, so the gain never relies on losing his points. Returns a Swap (see the class)."""
         roster = roster or self.roster()
+        h = POLICY["stream_horizon_days"]
         first = self.swap_effective(add, drop)
-        now = self.swap_days(add, drop, roster, first)
+        dates = self.game_days(first, h)
+        tomorrow = self.today + dt.timedelta(days=1)
+        if dates and dates[0] == self.today and not any(
+                self.plays(p, self.today) and not self.locked(p, self.today) for p in (add, drop)):
+            dates = self.game_days(tomorrow, h)   # nothing changes today: judge it on the next game day
+        now = self.swap_days(add, drop, roster, dates)
         days, wait = now, False
         if now and now[0][0] == self.today and now[0][1] < -1e-6:
-            days, wait = now[1:], True
+            wait = True
+            later = self.game_days(tomorrow, h)
+            days = self.swap_days(add, drop, roster, later)
+            now = now[:1] + self.swap_days(add, drop, roster, later)
         effective = days[0][0] if days else first + dt.timedelta(days=1 if wait else 0)
-        add_first = next((d for d in self.remaining_games(add) if d >= effective), None)
+        add_first = min((d for d in self.games[add.pro_team]
+                         if d >= effective and not (d == self.today and self.locked(add, d))), default=None)
         return Swap(sum(g for _, g, _ in days), [(d, s) for d, _, s in days if s is not None],
                     [(d, g) for d, g, _ in days], effective, wait, sum(g for _, g, _ in now),
                     [(d, g) for d, g, _ in now], add_first)
@@ -688,7 +746,7 @@ class League:
 
 class Swap(tuple):
     """evaluate_swap result. Unpacks as (gain, starts) for older callers.
-    gain: FP this week at the chosen timing · starts: [(date, slot)] the add starts · days: [(date, FP gain)] ·
+    gain: FP over the streaming horizon (stream_horizon_days game days) at the chosen timing · starts: [(date, slot)] the add starts · days: [(date, FP gain)] ·
     effective: first day the move counts · wait: True = make it after the drop's game today · now_gain / now_days:
     the same if made immediately · add_first: the add's first game once the move is in effect (None: no game left)."""
 

@@ -29,16 +29,16 @@ SCORING_CONFIRMED = {
 STAT_GP = "42"
 
 POLICY = {
-    # Flex pool = players we added in the last flex_recent_days (still rostered), newest first,
-    # capped per mode. With no recent adds it falls back to the lowest-rated player (plus anyone
-    # within flex_margin FP/G of him).
+    # Core = the top core_size players on the active roster by rest-of-season rate (The Godfather's split: 9 locked, 3
+    # streaming). Everyone else holds a streaming spot and is rotated daily. Aggressive mode keeps one fewer core player.
     "mode": "conservative",
-    "flex_slots": {"conservative": 2, "aggressive": 3},
-    "flex_recent_days": 7,
-    "flex_margin": 3.0,
-    # Flex moves are judged on this matchup week and current form (last-15 blended with the rate).
-    # A move must add at least this many projected FP to the week, from starts the add really gets.
-    "flex_min_week_gain": 10.0,
+    "core_size": {"conservative": 9, "aggressive": 8},
+    # Streaming moves are judged on current form (last-15 blended with the rate) over the next stream_horizon_days NBA
+    # game days the move is in effect (1 = just the next game day: today's games in the morning, tomorrow's after tonight's
+    # tips). A 21-day simulation (weeks 3-5, 2026-27) scored 1 day > 2 > 3 > rest of week. A move must add at least
+    # stream_min_gain FP over that horizon, from starts the add really gets in an eligible slot.
+    "stream_horizon_days": 1,
+    "stream_min_gain": 10.0,
     "form_prior_games": 5,
     # Core players are only drop candidates when their outlook is badly hurt (availability at or
     # below this, e.g. OUT/DOUBTFUL) and they can't just go to an open IR slot.
