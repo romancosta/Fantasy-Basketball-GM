@@ -31,12 +31,13 @@ def _get(url, headers=None, ttl=CACHE_TTL):
     return data
 
 
-def league(*views, scoring_period=None):
+def league(*views, scoring_period=None, ttl=CACHE_TTL):
+    """League views, optionally for one scoring period. ttl=None caches for good (finished days)."""
     q = "&".join(f"view={v}" for v in views)
     if scoring_period:
         q += f"&scoringPeriodId={scoring_period}"
     url = f"{HOST}/seasons/{CONFIG['season']}/segments/0/leagues/{CONFIG['league_id']}?{q}"
-    return _get(url)
+    return _get(url, ttl=ttl)
 
 
 def players(statuses=("ONTEAM", "FREEAGENT", "WAIVERS"), limit=500, scoring_period=None):

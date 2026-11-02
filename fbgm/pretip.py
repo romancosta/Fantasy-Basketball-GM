@@ -97,7 +97,8 @@ def dead_slots(lg, day, full):
         fa = next((p for p in pool if slot in p.slots and p not in taken), None)
         gain = day_value(lg, fa, day) if fa else 0.0
         drop = drop_candidate(lg, day, full, exclude={pl} | dropped)
-        if fa and drop and gain >= POLICY["pretip_min_gain"]:
+        # A pickup that can't move this week's result isn't worth an alert (the nightly and evening reports list clear upgrades).
+        if fa and drop and gain >= POLICY["pretip_min_gain"] and not lg.week_dead():
             taken.add(fa)
             dropped.add(drop)
             out.append((pl, slot, fa, drop, gain))

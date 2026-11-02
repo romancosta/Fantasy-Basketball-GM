@@ -7,7 +7,7 @@ import traceback
 from . import espn
 from .config import BENCH, CONFIG, IR, POLICY, SLOT_NAMES
 from .fmt import f1, inj, short_name
-from .model import ET, League, fantasy_points
+from .model import League, fantasy_points
 
 
 def pos(pl):
@@ -123,7 +123,7 @@ def cmd_drops(lg, a):
     for p in mine:
         notes = []
         if p in flex:
-            notes.append("FLEX")
+            notes.append("STREAM")
         if p.underperforming:
             notes.append("UNDERPERFORMING")
             under += 1
@@ -132,8 +132,7 @@ def cmd_drops(lg, a):
         print(f"{p.name[:24]:24} {pos(p):9} {p.rate:5.1f} {f1(p.season_fpg):>5} {f1(p.last15_fpg):>5} "
               f"{p.prior:5.1f} {p.gp:3} {lg.games_left(p):3}  {' '.join(notes)}")
     mode = a.mode or POLICY["mode"]
-    print(f"\nMode: {mode}. FLEX = players we'd rotate: the lowest rate plus anyone within "
-          f"{POLICY['flex_margin']:.0f} FP/G of it (max {POLICY['flex_slots'][mode]}).")
+    print(f"\nMode: {mode}. Core = the top {POLICY['core_size'][mode]} by rate; STREAM = the streaming spots we rotate daily.")
     if mode == "conservative" and under >= POLICY["aggressive_trigger"]:
         print(f"!! {under} underperformers -> consider --mode aggressive")
 
@@ -149,13 +148,35 @@ def cmd_swap(lg, a):
     print(f"Drop {drop.name:24} form {drop.form:5.1f}  rate {drop.rate:5.1f}  games left {lg.games_left(drop)}{inj(drop)}")
     print(f"Matchups  add: {opp_list(lg, add)} (SOS {sos_str(lg, add).strip()})")
     print(f"         drop: {opp_list(lg, drop)} (SOS {sos_str(lg, drop).strip()})")
-    print(f"This week: {wk:+.1f} FP on current form | {starts_str(starts)} | ROS rate {add.rate - drop.rate:+.1f} FP/G")
+    print(f"Next game day{'s' * (len(sw.days) > 1)}: {gain_str(sw)} on current form | {starts_str(starts)} | "
+          f"ROS rate {add.rate - drop.rate:+.1f} FP/G")
     print(f"By day: {days_str(sw.days)}" + (f" (moving now: {days_str(sw.now_days)} = {sw.now_gain:+.0f})" if sw.wait else ""))
     when = timing_str(lg, sw, add, drop)
-    v = verdict(lg, add, drop, wk, starts, a.mode)
+    v = verdict(lg, add, drop, wk, starts, a.mode, sw)
     if v.startswith("MOVE") and when:
         v = ("MOVE AFTER TONIGHT" if sw.wait else "MOVE") + v[4:] + f"; {when}"
     print("Verdict: " + v)
+
+
+def next_day_str(lg, sw, add, drop):
+    """The move's effect on the game day after the one it's judged on, e.g. 'Mon −19 if not refilled' ('' if none)."""
+    if not sw.days:
+        return ""
+    nxt = lg.game_days(sw.days[-1][0] + dt.timedelta(days=1), 1)
+    if not nxt:
+        return ""
+    g = lg.swap_days(add, drop, lg.roster(), nxt)[0][1]
+    if round(g) == 0:
+        return ""
+    return f"{nxt[0]:%a} −{-g:.0f} if not refilled" if g < 0 else f"{nxt[0]:%a} +{g:.0f} too"
+
+
+def gain_str(sw):
+    """'+35 FP Mon' (or 'Mon-Tue' for a longer horizon): the move's gain over the game days it is judged on."""
+    if not sw.days:
+        return f"{sw.gain:+.0f} FP (no game day left)"
+    first, last = sw.days[0][0], sw.days[-1][0]
+    return f"{sw.gain:+.0f} FP {first:%a}" + (f"-{last:%a}" if last != first else "")
 
 
 def days_str(days):
@@ -204,36 +225,41 @@ def drop_kind(lg, add, drop, flex):
     return "upgrade" if proven_upgrade(add, drop) else None
 
 
-def verdict(lg, add, drop, wk, starts, mode=None):
+def verdict(lg, add, drop, wk, starts, mode=None, sw=None):
     kind = drop_kind(lg, add, drop, lg.flex_pool(mode))
     if kind is None:
         return (f"NO - {drop.name} is core and {add.name} isn't a proven upgrade "
                 f"({POLICY['core_upgrade_min_gp']}+ GP, rate +{POLICY['core_upgrade_rate_gain']:.0f}, form at least as good)")
     if not starts:
         return f"NO - {add.name} can't crack the starting lineup (positions/schedule)"
-    if wk < POLICY["flex_min_week_gain"]:
-        return f"NO - only {wk:+.0f} FP this week (bar {POLICY['flex_min_week_gain']:.0f})"
-    why = {"flex": "flex spot", "outlook": "core outlook changed", "upgrade": "proven upgrade over core"}[kind]
-    return f"MOVE - {why}, {wk:+.0f} FP this week on current form"
+    when = gain_str(sw) if sw else f"{wk:+.0f} FP"
+    if wk < POLICY["stream_min_gain"]:
+        return f"NO - only {when} (bar {POLICY['stream_min_gain']:.0f})"
+    why = {"flex": "streaming spot", "outlook": "core outlook changed", "upgrade": "proven upgrade over core"}[kind]
+    return f"MOVE - {why}, {when} on current form"
 
 
 def plan_moves(lg, a):
-    """Best moves for this matchup week, on current form, respecting lineup slots.
-    Returns (flex, hurt core, [(week FP, starts, add, drop)], alternatives for the first move)."""
+    """Best streaming moves on current form over the next game day(s) (POLICY stream_horizon_days), respecting lineup
+    slots. Returns (streaming spots, hurt core, [(FP, starts, add, drop, swap)], alternatives for the first move)."""
     flex = lg.flex_pool(a.mode)
     roster = list(lg.roster())
-    days = lg.remaining_days()
+    days = lg.plan_days()
     hurt = [p for p in roster if p not in flex and p.lineup_slot != IR and core_drop_ok(lg, p)]
     drops = [p for p in roster if p.lineup_slot != IR]
     cands = sorted(lg.free_agents, key=lambda p: -p.form)[:40]
-    # Streamers: also consider the best schedule fits this week.
-    cands += sorted(lg.free_agents, key=lambda p: -p.form * p.availability * lg.games_left(p))[:20]
+    # Streamers: also consider the best schedule fits over the days a move could be judged on.
+    cands += sorted(lg.free_agents, key=lambda p: -p.form * p.availability * sum(
+        1 for d in days if lg.plays(p, d) and not lg.locked(p, d)))[:20]
     # Schedule fits: games on days our lineup has an open slot the add could fill.
     holes = {d: open_slots(lg, roster, d) for d in days}
     cands += sorted(lg.free_agents, key=lambda p: -p.form * p.availability * sum(
         1 for d in days if holes[d] & p.slots and lg.plays(p, d) and not lg.locked(p, d)))[:20]
     cands = [p for p in {c.id: c for c in cands}.values()
              if p.availability >= POLICY["add_min_availability"] and p.gp > 0]
+
+    week_end = lg.week_days[-1]
+    skipped = []
 
     def rank(roster, drops, cands):
         rows = []
@@ -242,11 +268,18 @@ def plan_moves(lg, a):
                 if drop_kind(lg, add, drop, flex) is None:
                     continue
                 sw = lg.evaluate_swap(add, drop, roster)
-                if sw.starts and sw.gain >= POLICY["flex_min_week_gain"]:
-                    rows.append((sw.gain, sw.starts, add, drop, sw))
-        rows.sort(key=lambda r: -r[0])
-        # Neck and neck with the best move: prefer one that can be made now, then the easier schedule.
-        near = [r for r in rows if r[0] >= rows[0][0] - POLICY["tie_week"]] if rows else []
+                if not (sw.starts and sw.gain >= POLICY["stream_min_gain"]):
+                    continue
+                sw.zone, sw.impact = impact_zone(lg, sw, add, drop, week_end)
+                if sw.zone == "skip":
+                    skipped.append(sw)
+                    continue
+                rows.append((sw.gain, sw.starts, add, drop, sw))
+        # Earliest game day first (today's moves can't wait), then the biggest gain.
+        rows.sort(key=lambda r: (r[4].days[0][0] if r[4].days else dt.date.max, -r[0]))
+        # Neck and neck with the best move for that day: prefer one that can be made now, then the easier schedule.
+        near = [r for r in rows if r[4].days[:1] == rows[0][4].days[:1]
+                and r[0] >= rows[0][0] - POLICY["tie_week"]] if rows else []
         if near:
             best = max(near, key=lambda r: (not r[4].wait, lg.sos(r[2]) or 1.0, r[0]))
             rows.remove(best)
@@ -267,7 +300,60 @@ def plan_moves(lg, a):
                for d, r in cur.items()}
         left = [p for p in left if p is not best[3]]
         cands = [p for p in cands if p is not best[2]]
-    return flex, hurt, plan, alts
+    # Nothing this week can move the result: only clear upgrades are worth making.
+    lg.moves_skipped = len(skipped)
+    if lg.plan_days() and lg.plan_days()[0] <= week_end and lg.week_dead():
+        plan += upgrade_moves(lg, roster, {r[2] for r in plan}, {r[3] for r in plan})
+    used = {r[2] for r in plan}
+    return flex, hurt, plan, [r for r in alts if r[2] not in used]
+
+
+def impact_zone(lg, sw, add, drop, week_end):
+    """('recommend' | 'optional' | 'skip', win-chance impact or None) for a streaming move (see POLICY impact_*)."""
+    sw.new_week = bool(sw.days) and sw.days[0][0] > week_end
+    if not sw.days or sw.new_week:
+        return "recommend", None                      # judged on next week's games: the new week is wide open
+    imp = lg.move_impact(sw.gain)
+    if imp is None or imp >= POLICY["impact_recommend"]:
+        return "recommend", imp
+    if imp >= POLICY["impact_skip"] and not next_day_str(lg, sw, add, drop).endswith("if not refilled"):
+        return "optional", imp
+    return "skip", imp
+
+
+def upgrade_moves(lg, roster, used_adds, used_drops):
+    """Clear rest-of-season upgrades (proven_upgrade) for anyone on the active roster, best rate gain first, each add and
+    drop used once. The add must fit the lineup (a start on one of his next 3 game days once the move is in effect)."""
+    fas = [p for p in lg.free_agents if p.availability >= POLICY["add_min_availability"] and p.gp > 0
+           and p not in used_adds]
+    pairs = []
+    for drop in roster:
+        if drop.lineup_slot == IR or drop in used_drops:
+            continue
+        for add in fas:
+            if proven_upgrade(add, drop):
+                pairs.append((add.rate - drop.rate, add, drop))
+    out, adds, drops = [], set(), set()
+    for _, add, drop in sorted(pairs, key=lambda x: -x[0]):
+        if add in adds or drop in drops:
+            continue
+        sw = lg.evaluate_swap(add, drop, roster)
+        if not any(slot is not None for _, _, slot in lg.swap_days(add, drop, roster, lg.game_days(sw.effective, 3))):
+            continue
+        sw.zone, sw.impact = "upgrade", None
+        out.append((sw.gain, sw.starts, add, drop, sw))
+        adds.add(add)
+        drops.add(drop)
+    return out
+
+
+def zone_tag(sw):
+    """' · win chance +2.3 pts' / ' · new week' for a recommended or optional move, '' otherwise."""
+    if getattr(sw, "zone", None) not in ("recommend", "optional"):
+        return ""
+    if getattr(sw, "new_week", False):
+        return " · new week"
+    return "" if sw.impact is None else f" · win chance +{100 * sw.impact:.1f} pts"
 
 
 def open_slots(lg, roster, day):
@@ -281,29 +367,73 @@ def open_slots(lg, roster, day):
     return set(slots)
 
 
+def bench_calls(lg, roster, day):
+    """Players with a game on `day` who don't make the best lineup: [(player, FP, reason, holders of his slots, lowest
+    starter projecting below him, that starter's FP)], best first. reason is
+    'logjam' when he only fits slots held by better players while someone worse starts elsewhere (or a slot stays
+    empty), else 'lowest'. Locked games are left alone."""
+    _, lineup = lg.day_projection(roster, day)
+    value = {p: p.expected * lg.rest_factor(p, day) for p in roster}
+    out = []
+    for p in roster:
+        if (p.lineup_slot == IR or p in lineup or not lg.plays(p, day) or value[p] <= 0
+                or (day == lg.today and lg.locked(p, day))):
+            continue
+        holders = sorted((q for q, s in lineup.items() if s in p.slots), key=lambda q: -value[q])
+        worse = [q for q in lineup if value[q] < value[p]]
+        empty = len(lineup) < len(lg.slots)
+        low = min(worse, key=lambda q: value[q]) if worse else None
+        out.append((p, value[p], "logjam" if worse or empty else "lowest", holders, low, value.get(low)))
+    return sorted(out, key=lambda r: -r[1])
+
+
+def bench_str(lg, calls):
+    """'Lillard 46 (PG/G held by SGA, Murray; Barrett 38 starts) · Kuminga 36 (lowest projection)'."""
+    bits = []
+    for p, v, why, holders, worse, worse_v in calls:
+        if why == "logjam":
+            held = ", ".join(short(q) for q in holders[:3]) or "nobody"
+            tail = f"; {short(worse)} {worse_v:.0f} starts" if worse else "; a slot he can't fill stays empty"
+            where = [SLOT_NAMES[s] for s in sorted(p.slots) if s <= 4] + (["G"] if 5 in p.slots & set(lg.slots) else [])
+            bits.append(f"{short(p)} {v:.0f} ({'/'.join(where)} held by {held}{tail})")
+        else:
+            bits.append(f"{short(p)} {v:.0f} (lowest projection)")
+    return " · ".join(bits)
+
+
 def move_tag(lg, r, flex):
     return {"flex": "", "outlook": " (core, outlook changed)",
             "upgrade": f" (core, proven upgrade: rate +{r[2].rate - r[3].rate:.1f} FP/G)"}[drop_kind(lg, r[2], r[3], flex)]
 
 
 def cmd_advise(lg, a, quiet_header=False):
-    """Best moves for this matchup week, on current form, respecting lineup slots."""
+    """Best streaming moves for the next game day, on current form, respecting lineup slots."""
     if not quiet_header:
         header(lg)
     flex, hurt, plan, alts = plan_moves(lg, a)
-    print("\nFlex: " + (", ".join(f"{p.name} (form {p.form:.1f})" for p in flex) or "none")
+    if getattr(lg, "moves_skipped", 0) and lg.week_dead():
+        print(f"\nWeek {lg.matchup_period} can't be moved by today's moves: only clear upgrades are shown.")
+    print("\nStreaming spots: " + (", ".join(f"{p.name} (form {p.form:.1f})" for p in flex) or "none")
           + (f"  | core with changed outlook: {', '.join(f'{p.name}{inj(p)}' for p in hurt)}" if hurt else ""))
 
     def show(r):
         wk, starts, add, drop, sw = r
         when = timing_str(lg, sw, add, drop)
-        print(f"  {'WAIT' if sw.wait else 'MOVE'} +{add.name} / -{drop.name}{move_tag(lg, r, flex)}: week {wk:+.0f} FP, form {add.form:.1f} vs {drop.form:.1f}, "
+        label = {"optional": "OPTIONAL", "upgrade": "UPGRADE"}.get(getattr(sw, "zone", None), "MOVE")
+        if sw.wait:
+            label = "WAIT" if label == "MOVE" else label + " (after tonight)"
+        extra = (f"rate {add.rate:.1f} vs {drop.rate:.1f}" if getattr(sw, "zone", None) == "upgrade"
+                 else gain_str(sw) + zone_tag(sw))
+        print(f"  {label} +{add.name} / -{drop.name}{move_tag(lg, r, flex)}: {extra}, form {add.form:.1f} vs {drop.form:.1f}, "
               f"{starts_str(starts)}, SOS {sos_str(lg, add).strip()}"
               f"{' (waivers)' if add.status == 'WAIVERS' else ''}{inj(add)}")
-        print(f"    by day: {days_str(sw.days)}" + (f" · {when}" if when else ""))
+        nd = next_day_str(lg, sw, add, drop)
+        if len(sw.days) > 1 or when or nd:
+            print(f"    by day: {days_str(sw.days)}" + (f" · next: {nd}" if nd else "") + (f" · {when}" if when else ""))
 
     if not plan:
-        print("No move clears the bar. Hold.")
+        print("No clear upgrade available. Hold." if getattr(lg, "moves_skipped", 0) and lg.week_dead()
+              else "No move clears the bar. Hold.")
     else:
         print("Recommended moves:")
         for r in plan:
@@ -317,25 +447,12 @@ def cmd_advise(lg, a, quiet_header=False):
 
 def cmd_rivals(lg, a):
     header(lg)
-    tx = espn.league("mTransactions2").get("transactions", [])
-    cutoff = lg.now - dt.timedelta(days=a.days)
-    rows = []
-    for t in tx:
-        if t.get("status") != "EXECUTED" or t.get("type") not in ("FREEAGENT", "WAIVER"):
-            continue
-        when = dt.datetime.fromtimestamp(t["proposedDate"] / 1000, ET)
-        if when < cutoff:
-            continue
-        for it in t["items"]:
-            if it["type"] in ("ADD", "DROP"):
-                pl = lg.players.get(it["playerId"])
-                rows.append((when, lg.team_names.get(t["teamId"], t["teamId"]), it["type"],
-                             pl.name if pl else it["playerId"], pl))
-    rows.sort(key=lambda r: r[0], reverse=True)
     print(f"\nLast {a.days} days:")
-    for when, team, kind, name, pl in rows:
+    for t in reversed(lg.transactions(a.days)):
+        pl = lg.players.get(t["player"])
         extra = f" (rate {pl.rate:.1f}, now {'FA' if pl.status != 'ONTEAM' else 'rostered'})" if pl else ""
-        print(f"  {when:%a %m/%d %I:%M%p} {team:26} {kind:4} {name}{extra}")
+        print(f"  {t['when']:%a %m/%d %I:%M%p} {lg.team_names.get(t['team'], t['team']):26} {t['kind']:4} "
+              f"{pl.name if pl else t['player']}{extra}")
 
 
 def cmd_check(lg, a):
@@ -373,6 +490,8 @@ def main(argv=None):
     p = sub.add_parser("recap"); p.add_argument("--date")
     p = sub.add_parser("nightly"); p.add_argument("--n", type=int, default=3)
     sub.add_parser("pretip", help="lineup check before today's games lock (quiet when nothing to do)")
+    p = sub.add_parser("evening", help="after tonight's tips: streaming moves for the next game day (quiet when none)")
+    p.add_argument("--n", type=int, default=3)
     sub.add_parser("accuracy", help="how much projected-vs-actual data has been captured")
     p = sub.add_parser("watchdog", help="check that last night's state was committed (needs git only)")
     p.add_argument("--branch", default="nightly-state")
@@ -389,6 +508,8 @@ def main(argv=None):
         from . import report   # imports this module, so load it lazily
         if a.cmd == "pretip":
             from .pretip import cmd_pretip as cmd
+        elif a.cmd == "evening":
+            from .evening import cmd_evening as cmd
         else:
             cmd = getattr(report, f"cmd_{a.cmd}", None) or globals()[f"cmd_{a.cmd}"]
         cmd(lg, a)

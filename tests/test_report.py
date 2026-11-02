@@ -2,6 +2,7 @@ import contextlib
 import datetime as dt
 import io
 import unittest
+import unittest.mock
 from types import SimpleNamespace as NS
 
 from fbgm import fmt, health, report
@@ -242,11 +243,32 @@ class League(unittest.TestCase):
     def test_rows_rank_by_power_with_moves_trends_and_markers(self):
         prev = {2: 0, 1: 2, 3: 1, 4: 3}      # we were 3rd yesterday, Joe Po 2nd
         rows = report.league_rows(self.POWER, prev, self.REC, self.SIM, self.NAMES, 1, 2)
-        self.assertEqual(rows[0], ["1 –", "The Godfather 👑", "0-1", "2,054", "2,407🔥", "78%"])
+        self.assertEqual(rows[0], ["1 –", "The Godfather 👑", "0-1", "2,054", "2,407🔥", "–", "78%"])
         self.assertEqual(rows[1][:3], ["2 ▲1", "**Us Team**", "1-0"])
         self.assertEqual(rows[2][4], "1,500🧊")
         self.assertEqual(rows[2][0], "3 ▼1")
         self.assertEqual(rows[3][2], "1-0-1")
+
+    def test_starts_column_sums_the_last_days(self):
+        starts = {D(2026, 10, 30): {2: 10, 1: 7}, D(2026, 10, 31): {2: 9, 1: 6}}
+        rows = report.league_rows(self.POWER, {}, self.REC, self.SIM, self.NAMES, 1, 2, starts)
+        self.assertEqual([r[5] for r in rows], ["19", "13", "0", "0"])
+
+    def test_rival_line(self):
+        from fbgm.model import ET
+        now = dt.datetime(2026, 11, 1, 2, 10, tzinfo=ET)
+        tx = [{"when": now - dt.timedelta(hours=5), "team": 2, "kind": "ADD", "player": 11},
+              {"when": now - dt.timedelta(hours=5), "team": 2, "kind": "DROP", "player": 12},
+              {"when": now - dt.timedelta(hours=3), "team": 3, "kind": "ADD", "player": 13},     # another team
+              {"when": now - dt.timedelta(hours=30), "team": 2, "kind": "ADD", "player": 14}]    # too old
+        lg = NS(now=now, today=now.date(), slots=list(range(10)), team_names=self.NAMES,
+                players={11: NS(name="Ace Bailey"), 12: NS(name="Andrew Nembhard")}, transactions=lambda days: tx)
+        starts = {D(2026, 10, 31): {2: 10, 1: 8}}
+        with unittest.mock.patch.dict(report.CONFIG, {"my_team_id": 1}):
+            line = report.rival_line(lg, 2, starts)
+        self.assertEqual(line, "👑 **The Godfather**, last 24h: +Bailey · −Nembhard · started 10/10 yesterday (us 8)")
+        lg.transactions = lambda days: []
+        self.assertEqual(report.rival_line(lg, 2, {}), "👑 **The Godfather**, last 24h: no adds or drops")
 
     def test_summary_line_flags_a_must_win(self):
         line = report.league_summary(self.SIM, 1, self.NAMES, 2, [(3, 0.7), (4, 0.79)])
