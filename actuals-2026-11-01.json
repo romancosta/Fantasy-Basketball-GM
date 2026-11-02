@@ -1,0 +1,37 @@
+{
+ "date": "2026-11-01",
+ "final": true,
+ "period": 2,
+ "teams": {
+  "31": {
+   "day": 118.0,
+   "players": {
+    "Michael Porter Jr.": {
+     "bench": false,
+     "pts": 55.0
+    },
+    "RJ Barrett": {
+     "bench": false,
+     "pts": 63.0
+    }
+   },
+   "total": 1657.0
+  },
+  "5": {
+   "day": 113.0,
+   "players": {
+    "Austin Reaves": {
+     "bench": false,
+     "pts": 39.0
+    },
+    "Jayson Tatum": {
+     "bench": false,
+     "pts": 74.0
+    }
+   },
+   "total": 1485.0
+  }
+ },
+ "version": 2,
+ "winner": 31
+}

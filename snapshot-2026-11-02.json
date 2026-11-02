@@ -1,0 +1,160 @@
+{
+ "date": "2026-11-02",
+ "me": 31,
+ "opp": 1,
+ "period": 3,
+ "teams": {
+  "1": {
+   "day": 443.6,
+   "players": {
+    "Anthony Black": {
+     "avail": 1.0,
+     "lineup": true,
+     "proj": 38.1,
+     "rest": 0.019
+    },
+    "Bam Adebayo": {
+     "avail": 1.0,
+     "lineup": true,
+     "proj": 54.3,
+     "rest": 0.0
+    },
+    "Brandin Podziemski": {
+     "avail": 1.0,
+     "lineup": true,
+     "proj": 41.0,
+     "rest": 0.012
+    },
+    "Darius Garland": {
+     "avail": 1.0,
+     "lineup": true,
+     "proj": 26.8,
+     "rest": 0.375
+    },
+    "Franz Wagner": {
+     "avail": 1.0,
+     "lineup": true,
+     "proj": 45.9,
+     "rest": 0.125
+    },
+    "Kel'el Ware": {
+     "avail": 1.0,
+     "lineup": true,
+     "proj": 40.8,
+     "rest": 0.0
+    },
+    "Keyonte George": {
+     "avail": 1.0,
+     "lineup": true,
+     "proj": 50.2,
+     "rest": 0.0
+    },
+    "Paul George": {
+     "avail": 1.0,
+     "lineup": true,
+     "proj": 43.5,
+     "rest": 0.096
+    },
+    "Scottie Barnes": {
+     "avail": 1.0,
+     "lineup": true,
+     "proj": 57.2,
+     "rest": 0.014
+    },
+    "Stephon Castle": {
+     "avail": 1.0,
+     "lineup": true,
+     "proj": 45.8,
+     "rest": 0.0
+    },
+    "Trey Murphy III": {
+     "avail": 0.6,
+     "lineup": false,
+     "proj": 25.6,
+     "rest": 0.0
+    }
+   },
+   "week": 1699.9
+  },
+  "31": {
+   "day": 526.4,
+   "players": {
+    "Alperen Sengun": {
+     "avail": 1.0,
+     "lineup": true,
+     "proj": 63.2,
+     "rest": 0.0
+    },
+    "Damian Lillard": {
+     "avail": 1.0,
+     "lineup": false,
+     "proj": 46.0,
+     "rest": 0.0
+    },
+    "Domantas Sabonis": {
+     "avail": 1.0,
+     "lineup": true,
+     "proj": 63.5,
+     "rest": 0.0
+    },
+    "Donovan Clingan": {
+     "avail": 1.0,
+     "lineup": true,
+     "proj": 42.7,
+     "rest": 0.0
+    },
+    "Jabari Smith Jr.": {
+     "avail": 1.0,
+     "lineup": true,
+     "proj": 42.7,
+     "rest": 0.0
+    },
+    "Jamal Murray": {
+     "avail": 1.0,
+     "lineup": true,
+     "proj": 57.7,
+     "rest": 0.0
+    },
+    "Jaylen Brown": {
+     "avail": 1.0,
+     "lineup": true,
+     "proj": 55.1,
+     "rest": 0.0
+    },
+    "Jonathan Kuminga": {
+     "avail": 1.0,
+     "lineup": false,
+     "proj": 36.3,
+     "rest": 0.0
+    },
+    "LeBron James": {
+     "avail": 1.0,
+     "lineup": true,
+     "proj": 55.5,
+     "rest": 0.0
+    },
+    "Michael Porter Jr.": {
+     "avail": 1.0,
+     "lineup": true,
+     "proj": 41.6,
+     "rest": 0.188
+    },
+    "RJ Barrett": {
+     "avail": 1.0,
+     "lineup": true,
+     "proj": 39.4,
+     "rest": 0.173
+    },
+    "Shai Gilgeous-Alexander": {
+     "avail": 1.0,
+     "lineup": true,
+     "proj": 64.9,
+     "rest": 0.0
+    }
+   },
+   "week": 2037.6
+  }
+ },
+ "version": 2,
+ "win_prob": 0.884
+}
