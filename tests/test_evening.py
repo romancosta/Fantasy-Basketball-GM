@@ -35,6 +35,13 @@ class Evening(unittest.TestCase):
         self.assertIn("is decided", lines[0])
 
 
+    def test_settled_week_is_quiet(self):
+        lg, _, _ = kuminga_case(now=at(SAT, 22))
+        lg.matchup_period, lg._settled = 2, 1.0
+        self.assertEqual(self.run_evening(lg), ("OK", ["EVENING OK · week 2 is settled (100% win chance); no moves "
+                                                       "needed for Sun 11/01"]))
+
+
 class BenchCall(unittest.TestCase):
     def lg(self, roster, slots):
         games = {1: {SAT: at(SAT, 19)}}

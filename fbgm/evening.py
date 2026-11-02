@@ -19,6 +19,9 @@ def evening(lg, a):
     # Only moves judged on the next game day; anything still about tonight's late games is the pre-tip check's job.
     plan = [r for r in plan if r[4].days and r[4].days[0][0] == target]
     alts = [r for r in alts if r[4].days and r[4].days[0][0] == target] if plan else []
+    if target <= lg.week_days[-1] and lg.week_settled() is not None:
+        return "OK", [f"EVENING OK · week {lg.matchup_period} is settled ({lg.week_settled():.0%} win chance); "
+                      f"no moves needed for {target:%a %m/%d}"]
     if plan and target <= lg.week_days[-1] and week_is_decided(lg):
         return "OK", [f"EVENING OK · week {lg.matchup_period} is decided; no moves needed for {target:%a %m/%d}"]
     if not plan:

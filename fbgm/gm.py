@@ -158,6 +158,19 @@ def cmd_swap(lg, a):
     print("Verdict: " + v)
 
 
+def next_day_str(lg, sw, add, drop):
+    """The move's effect on the game day after the one it's judged on, e.g. 'Mon −19 if not refilled' ('' if none)."""
+    if not sw.days:
+        return ""
+    nxt = lg.game_days(sw.days[-1][0] + dt.timedelta(days=1), 1)
+    if not nxt:
+        return ""
+    g = lg.swap_days(add, drop, lg.roster(), nxt)[0][1]
+    if round(g) == 0:
+        return ""
+    return f"{nxt[0]:%a} −{-g:.0f} if not refilled" if g < 0 else f"{nxt[0]:%a} +{g:.0f} too"
+
+
 def gain_str(sw):
     """'+35 FP Mon' (or 'Mon-Tue' for a longer horizon): the move's gain over the game days it is judged on."""
     if not sw.days:
@@ -245,6 +258,8 @@ def plan_moves(lg, a):
     cands = [p for p in {c.id: c for c in cands}.values()
              if p.availability >= POLICY["add_min_availability"] and p.gp > 0]
 
+    week_end = lg.week_days[-1]
+
     def rank(roster, drops, cands):
         rows = []
         for add in cands:
@@ -252,8 +267,12 @@ def plan_moves(lg, a):
                 if drop_kind(lg, add, drop, flex) is None:
                     continue
                 sw = lg.evaluate_swap(add, drop, roster)
-                if sw.starts and sw.gain >= POLICY["stream_min_gain"]:
-                    rows.append((sw.gain, sw.starts, add, drop, sw))
+                if not (sw.starts and sw.gain >= POLICY["stream_min_gain"]):
+                    continue
+                # A settled week: points on its games can't change the result, so only moves for next week count.
+                if sw.days and sw.days[0][0] <= week_end and lg.week_settled() is not None:
+                    continue
+                rows.append((sw.gain, sw.starts, add, drop, sw))
         # Earliest game day first (today's moves can't wait), then the biggest gain.
         rows.sort(key=lambda r: (r[4].days[0][0] if r[4].days else dt.date.max, -r[0]))
         # Neck and neck with the best move for that day: prefer one that can be made now, then the easier schedule.
@@ -338,6 +357,8 @@ def cmd_advise(lg, a, quiet_header=False):
     if not quiet_header:
         header(lg)
     flex, hurt, plan, alts = plan_moves(lg, a)
+    if lg.week_settled() is not None:
+        print(f"\nWeek {lg.matchup_period} is settled ({lg.week_settled():.0%} win chance): this week's moves are skipped.")
     print("\nStreaming spots: " + (", ".join(f"{p.name} (form {p.form:.1f})" for p in flex) or "none")
           + (f"  | core with changed outlook: {', '.join(f'{p.name}{inj(p)}' for p in hurt)}" if hurt else ""))
 
@@ -347,8 +368,9 @@ def cmd_advise(lg, a, quiet_header=False):
         print(f"  {'WAIT' if sw.wait else 'MOVE'} +{add.name} / -{drop.name}{move_tag(lg, r, flex)}: {gain_str(sw)}, form {add.form:.1f} vs {drop.form:.1f}, "
               f"{starts_str(starts)}, SOS {sos_str(lg, add).strip()}"
               f"{' (waivers)' if add.status == 'WAIVERS' else ''}{inj(add)}")
-        if len(sw.days) > 1 or when:
-            print(f"    by day: {days_str(sw.days)}" + (f" · {when}" if when else ""))
+        nd = next_day_str(lg, sw, add, drop)
+        if len(sw.days) > 1 or when or nd:
+            print(f"    by day: {days_str(sw.days)}" + (f" · next: {nd}" if nd else "") + (f" · {when}" if when else ""))
 
     if not plan:
         print("No move clears the bar. Hold.")

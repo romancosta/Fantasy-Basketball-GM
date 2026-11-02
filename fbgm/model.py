@@ -343,8 +343,21 @@ class League:
         return wins / len(margins), margins
 
     def win_probability(self, team_id=None, opp_id=None):
-        """Chance team_id outscores opp_id this week (simulated, normal assumptions)."""
-        return self.simulate_week(team_id=team_id, opp_id=opp_id)[0]
+        """Chance team_id outscores opp_id this week (simulated, normal assumptions). Seeded, so cached per run."""
+        team_id = team_id or CONFIG["my_team_id"]
+        opp_id = opp_id or self.opponent_id(team_id)
+        cache = self.__dict__.setdefault("_win_p", {})
+        if (team_id, opp_id) not in cache:
+            cache[(team_id, opp_id)] = self.simulate_week(team_id=team_id, opp_id=opp_id)[0]
+        return cache[(team_id, opp_id)]
+
+    def week_settled(self):
+        """Our win chance when this matchup week is effectively settled (>= settled_win or <= settled_loss), else None.
+        Moves judged on this week's games are skipped then."""
+        if not hasattr(self, "_settled"):
+            p = self.win_probability()
+            self._settled = p if p >= POLICY["settled_win"] or p <= POLICY["settled_loss"] else None
+        return self._settled
 
     # ---- back-to-back rest ---------------------------------------------
     def b2b_leg(self, pl, day):

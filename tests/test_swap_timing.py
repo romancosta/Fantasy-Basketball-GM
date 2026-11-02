@@ -54,6 +54,7 @@ def make_lg(roster, fas, games, now):
     lg.roster = lambda team_id=None: lg.rosters[31]
     lg.free_agents, lg.players, lg.pro_abbrev = list(fas), {}, {1: "GS", 2: "GS", 3: "LAL", 4: "BOS"}
     lg._rest_watch = set()
+    lg._settled = None          # matchup still open
     return lg
 
 
@@ -174,6 +175,41 @@ class SwapTiming(unittest.TestCase):
         by_day = {SAT: [kuminga, big, idle], SUN: [podz, big, idle]}
         self.assertAlmostEqual(lg.evaluate_swap(tonight, idle, by_day).gain, 0.0)
         self.assertAlmostEqual(lg.evaluate_swap(tonight, idle, [podz, big, idle]).gain, 30.0)
+
+
+class SettledWeek(unittest.TestCase):
+    def test_settled_week_skips_this_weeks_moves(self):
+        lg, _, _ = kuminga_case(now=at(SAT, 21))       # +Podziemski counts from Sunday, still this week
+        lg._settled = 0.99
+        _, _, plan, _ = gm.plan_moves(lg, NS(mode=None, n=3))
+        self.assertEqual(plan, [])
+        lg.matchup_period = 2
+        text = out(report.roster_moves, lg, NS(mode=None, n=3), None)
+        self.assertIn("**Skip** · week 2 is settled (99% win chance)", text)
+
+    def test_settled_week_keeps_next_weeks_moves(self):
+        mon = dt.date(2026, 11, 2)
+        kuminga = P("Jonathan Kuminga", {0}, 0, 35.0, team=1)
+        big = P("Core Big", {1}, 1, 50.0, team=3)
+        add = P("Monday Guard", {0}, None, 40.0, team=2, status="FREEAGENT")
+        games = {1: {SUN: at(SUN, 15)}, 2: {mon: at(mon, 19)}, 3: {SUN: at(SUN, 18), mon: at(mon, 19)}}
+        lg = make_lg([kuminga, big], [add], games, at(SUN, 22))
+        lg._settled = 0.99
+        _, _, plan, _ = gm.plan_moves(lg, NS(mode=None, n=3))
+        self.assertEqual([(r[2].name, r[4].days) for r in plan], [("Monday Guard", [(mon, 40.0)])])
+
+
+class NextDay(unittest.TestCase):
+    def test_next_game_day_cost_is_shown(self):
+        # +Podziemski for Saturday, but Kuminga would have started Sunday too and Podziemski doesn't play then.
+        lg, kuminga, podz = kuminga_case(add_games={SAT: at(SAT, 19)})
+        lg.games[1] = {SAT: at(SAT, 20), SUN: at(SUN, 15)}
+        podz.expected = podz.form = podz.rate = 50.0
+        sw = lg.evaluate_swap(podz, kuminga)
+        self.assertEqual(sw.days, [(SAT, 15.0)])
+        self.assertEqual(gm.next_day_str(lg, sw, podz, kuminga), "Sun −35 if not refilled")
+        text = out(report.roster_moves, lg, NS(mode=None, n=3), None)
+        self.assertIn("**+15 FP Sat** · Sun −35 if not refilled", text)
 
 
 class OpportunityNextGame(unittest.TestCase):
