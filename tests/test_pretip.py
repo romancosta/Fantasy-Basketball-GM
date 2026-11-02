@@ -39,6 +39,7 @@ def make_lg(players, free_agents=(), games=None, now=NOW):
     lg.free_agents = list(free_agents)
     lg._rest_watch = set()
     lg._news = {p.id: [] for p in list(players) + list(free_agents)}
+    lg._margins = []          # no week simulation: pickups are judged on tonight's FP alone
     return lg
 
 

@@ -39,12 +39,15 @@ POLICY = {
     # stream_min_gain FP over that horizon, from starts the add really gets in an eligible slot.
     "stream_horizon_days": 1,
     "stream_min_gain": 10.0,
-    # A matchup week is settled once our win chance (the nightly's simulation) is at least settled_win or at most
-    # settled_loss: moves judged on its games are skipped, since their points can't change the result and their costs
-    # (a better player on waivers, a weaker roster next week) land next week. The stricter decided-week stress test
-    # (decided_win / decided_loss) still drives the report's banner.
-    "settled_win": 0.97,
-    "settled_loss": 0.03,
+    # Impact zones: a move for this week's games is worth what it changes our win chance (the share of the week
+    # simulation's outcomes it turns from a loss into a win). >= impact_recommend: recommended; >= impact_skip: optional
+    # (low impact), and hidden if it costs us on the next game day; below: skipped. Week 2 check: an 80% favourite
+    # midweek gained 3-6 pts per +30 FP move, an 88% Monday favourite 2.3, last Sunday at 99.6% only 0.35. Moves judged
+    # on next week's games are always recommended (a new week is wide open). When a typical move (impact_typical_gain
+    # FP) can't move this week, only clear upgrades are suggested (proven_upgrade: 8+ GP, rate +3, form at least as good).
+    "impact_recommend": 0.015,
+    "impact_skip": 0.005,
+    "impact_typical_gain": 30.0,
     "form_prior_games": 5,
     # Core players are only drop candidates when their outlook is badly hurt (availability at or
     # below this, e.g. OUT/DOUBTFUL) and they can't just go to an open IR slot.

@@ -32,14 +32,22 @@ class Evening(unittest.TestCase):
         with mock.patch.object(evening, "week_is_decided", return_value=True):
             status, lines = evening.evening(lg, NS(mode=None, n=3))
         self.assertEqual(status, "OK")
-        self.assertIn("is decided", lines[0])
+        self.assertIn("can't be moved", lines[0])
 
 
-    def test_settled_week_is_quiet(self):
-        lg, _, _ = kuminga_case(now=at(SAT, 22))
-        lg.matchup_period, lg._settled = 2, 1.0
-        self.assertEqual(self.run_evening(lg), ("OK", ["EVENING OK · week 2 is settled (100% win chance); no moves "
-                                                       "needed for Sun 11/01"]))
+    def test_dead_week_is_quiet(self):
+        lg, _, podz = kuminga_case(now=at(SAT, 22))
+        lg.matchup_period, lg._margins, podz.gp = 2, [500.0] * 100, 4   # not a proven upgrade
+        self.assertEqual(self.run_evening(lg), ("OK", ["EVENING OK · week 2 can't be moved; no moves needed for "
+                                                       "Sun 11/01"]))
+
+    def test_dead_week_lists_a_clear_upgrade(self):
+        lg, _, podz = kuminga_case(now=at(SAT, 22))
+        lg.matchup_period, lg._margins = 2, [500.0] * 100
+        podz.rate, podz.form, podz.gp = 45.0, 45.0, 10
+        status, lines = self.run_evening(lg)
+        self.assertEqual(status, "MOVES")
+        self.assertIn("⬆️ **Upgrade: +Brandin Podziemski / −Jonathan Kuminga**", "\n".join(lines))
 
 
 class BenchCall(unittest.TestCase):

@@ -259,6 +259,7 @@ def plan_moves(lg, a):
              if p.availability >= POLICY["add_min_availability"] and p.gp > 0]
 
     week_end = lg.week_days[-1]
+    skipped = []
 
     def rank(roster, drops, cands):
         rows = []
@@ -269,8 +270,9 @@ def plan_moves(lg, a):
                 sw = lg.evaluate_swap(add, drop, roster)
                 if not (sw.starts and sw.gain >= POLICY["stream_min_gain"]):
                     continue
-                # A settled week: points on its games can't change the result, so only moves for next week count.
-                if sw.days and sw.days[0][0] <= week_end and lg.week_settled() is not None:
+                sw.zone, sw.impact = impact_zone(lg, sw, add, drop, week_end)
+                if sw.zone == "skip":
+                    skipped.append(sw)
                     continue
                 rows.append((sw.gain, sw.starts, add, drop, sw))
         # Earliest game day first (today's moves can't wait), then the biggest gain.
@@ -298,8 +300,60 @@ def plan_moves(lg, a):
                for d, r in cur.items()}
         left = [p for p in left if p is not best[3]]
         cands = [p for p in cands if p is not best[2]]
+    # Nothing this week can move the result: only clear upgrades are worth making.
+    lg.moves_skipped = len(skipped)
+    if lg.plan_days() and lg.plan_days()[0] <= week_end and lg.week_dead():
+        plan += upgrade_moves(lg, roster, {r[2] for r in plan}, {r[3] for r in plan})
     used = {r[2] for r in plan}
     return flex, hurt, plan, [r for r in alts if r[2] not in used]
+
+
+def impact_zone(lg, sw, add, drop, week_end):
+    """('recommend' | 'optional' | 'skip', win-chance impact or None) for a streaming move (see POLICY impact_*)."""
+    sw.new_week = bool(sw.days) and sw.days[0][0] > week_end
+    if not sw.days or sw.new_week:
+        return "recommend", None                      # judged on next week's games: the new week is wide open
+    imp = lg.move_impact(sw.gain)
+    if imp is None or imp >= POLICY["impact_recommend"]:
+        return "recommend", imp
+    if imp >= POLICY["impact_skip"] and not next_day_str(lg, sw, add, drop).endswith("if not refilled"):
+        return "optional", imp
+    return "skip", imp
+
+
+def upgrade_moves(lg, roster, used_adds, used_drops):
+    """Clear rest-of-season upgrades (proven_upgrade) for anyone on the active roster, best rate gain first, each add and
+    drop used once. The add must fit the lineup (a start on one of his next 3 game days once the move is in effect)."""
+    fas = [p for p in lg.free_agents if p.availability >= POLICY["add_min_availability"] and p.gp > 0
+           and p not in used_adds]
+    pairs = []
+    for drop in roster:
+        if drop.lineup_slot == IR or drop in used_drops:
+            continue
+        for add in fas:
+            if proven_upgrade(add, drop):
+                pairs.append((add.rate - drop.rate, add, drop))
+    out, adds, drops = [], set(), set()
+    for _, add, drop in sorted(pairs, key=lambda x: -x[0]):
+        if add in adds or drop in drops:
+            continue
+        sw = lg.evaluate_swap(add, drop, roster)
+        if not any(slot is not None for _, _, slot in lg.swap_days(add, drop, roster, lg.game_days(sw.effective, 3))):
+            continue
+        sw.zone, sw.impact = "upgrade", None
+        out.append((sw.gain, sw.starts, add, drop, sw))
+        adds.add(add)
+        drops.add(drop)
+    return out
+
+
+def zone_tag(sw):
+    """' · win chance +2.3 pts' / ' · new week' for a recommended or optional move, '' otherwise."""
+    if getattr(sw, "zone", None) not in ("recommend", "optional"):
+        return ""
+    if getattr(sw, "new_week", False):
+        return " · new week"
+    return "" if sw.impact is None else f" · win chance +{100 * sw.impact:.1f} pts"
 
 
 def open_slots(lg, roster, day):
@@ -357,15 +411,20 @@ def cmd_advise(lg, a, quiet_header=False):
     if not quiet_header:
         header(lg)
     flex, hurt, plan, alts = plan_moves(lg, a)
-    if lg.week_settled() is not None:
-        print(f"\nWeek {lg.matchup_period} is settled ({lg.week_settled():.0%} win chance): this week's moves are skipped.")
+    if getattr(lg, "moves_skipped", 0) and lg.week_dead():
+        print(f"\nWeek {lg.matchup_period} can't be moved by today's moves: only clear upgrades are shown.")
     print("\nStreaming spots: " + (", ".join(f"{p.name} (form {p.form:.1f})" for p in flex) or "none")
           + (f"  | core with changed outlook: {', '.join(f'{p.name}{inj(p)}' for p in hurt)}" if hurt else ""))
 
     def show(r):
         wk, starts, add, drop, sw = r
         when = timing_str(lg, sw, add, drop)
-        print(f"  {'WAIT' if sw.wait else 'MOVE'} +{add.name} / -{drop.name}{move_tag(lg, r, flex)}: {gain_str(sw)}, form {add.form:.1f} vs {drop.form:.1f}, "
+        label = {"optional": "OPTIONAL", "upgrade": "UPGRADE"}.get(getattr(sw, "zone", None), "MOVE")
+        if sw.wait:
+            label = "WAIT" if label == "MOVE" else label + " (after tonight)"
+        extra = (f"rate {add.rate:.1f} vs {drop.rate:.1f}" if getattr(sw, "zone", None) == "upgrade"
+                 else gain_str(sw) + zone_tag(sw))
+        print(f"  {label} +{add.name} / -{drop.name}{move_tag(lg, r, flex)}: {extra}, form {add.form:.1f} vs {drop.form:.1f}, "
               f"{starts_str(starts)}, SOS {sos_str(lg, add).strip()}"
               f"{' (waivers)' if add.status == 'WAIVERS' else ''}{inj(add)}")
         nd = next_day_str(lg, sw, add, drop)
@@ -373,7 +432,8 @@ def cmd_advise(lg, a, quiet_header=False):
             print(f"    by day: {days_str(sw.days)}" + (f" · next: {nd}" if nd else "") + (f" · {when}" if when else ""))
 
     if not plan:
-        print("No move clears the bar. Hold.")
+        print("No clear upgrade available. Hold." if getattr(lg, "moves_skipped", 0) and lg.week_dead()
+              else "No move clears the bar. Hold.")
     else:
         print("Recommended moves:")
         for r in plan:

@@ -7,6 +7,10 @@ Notable changes to the nightly report and tooling. Newest first.
   the other 3 active spots stream (was: adds from the last 7 days, max 2). Moves are judged on the next game day only, across
   week boundaries (was: rest of this matchup week, which made Sunday-night moves for Monday worth nothing). Today's moves
   rank first; a move where neither player plays today counts from the next game day.
+- Impact zones: each move for this week's games shows how much it raises our win chance (from the week simulation).
+  >= 1.5 pts recommended, 0.5-1.5 optional (hidden if it costs the next game day), < 0.5 skipped. When the week can't be
+  moved, only clear rest-of-season upgrades are suggested (e.g. Sun 11/1 at 99.6%: the +98 FP trio of one-game streamers
+  is skipped). Each move also shows its next-day effect ("Mon −19 if not refilled").
 - `fbgm evening` + docs/evening-routine.md: ~10:30pm check for moves for the next game day.
 - Bench call in the nightly's Roster moves: who sits on a crowded night and why (lowest projection or position logjam).
 - League table: Starts L7 column (players who played in a starting slot, last 7 days). Rival line: The Godfather's adds/drops

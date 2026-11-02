@@ -7,7 +7,8 @@ import re
 from . import espn, health, lookahead, season, signals, tracking
 from .config import BENCH, CONFIG, DECIDED_LABEL, IR, OUTLOOK, POLICY, SLOT_NAMES
 from .fmt import inj, short_name, table
-from .gm import bench_calls, bench_str, days_str, gain_str, move_tag, next_day_str, plan_moves, pos, timing_str
+from .gm import (bench_calls, bench_str, days_str, gain_str, move_tag, next_day_str, plan_moves, pos, timing_str,
+                 zone_tag)
 from .model import hungarian_max
 
 
@@ -321,8 +322,15 @@ def move_lines(lg, plan, alts, flex):
         when = timing_str(lg, sw, add, drop)
         slot = f" · starts {', '.join(f'{d:%a} {SLOT_NAMES[s]}' for d, s in starts)}" if starts else ""
         nd = next_day_str(lg, sw, add, drop)
-        line = (f"- **+{add.name} / −{drop.name}**{move_tag(lg, r, flex)}: **{gain_str(sw)}**{f' · {nd}' if nd else ''} · "
-                f"form {add.form:.1f} vs {drop.form:.1f}{slot}{' · waivers' if add.status == 'WAIVERS' else ''}{inj(add)}")
+        zone = getattr(sw, "zone", None)
+        tail = f"form {add.form:.1f} vs {drop.form:.1f}{slot}{' · waivers' if add.status == 'WAIVERS' else ''}{inj(add)}"
+        if zone == "upgrade":
+            line = (f"- ⬆️ **Upgrade: +{add.name} / −{drop.name}**{move_tag(lg, r, flex)}: rate **{add.rate:.1f} vs "
+                    f"{drop.rate:.1f}** (+{add.rate - drop.rate:.1f} FP/G rest of season) · {tail}")
+        else:
+            label = "_Optional, low impact:_ " if zone == "optional" else ""
+            line = (f"- {label}**+{add.name} / −{drop.name}**{move_tag(lg, r, flex)}: **{gain_str(sw)}**{zone_tag(sw)}"
+                    f"{f' · {nd}' if nd else ''} · {tail}")
         if sw.wait:
             line += (f"\n  - ⏳ **Not now: {when}** (moving now: {days_str(sw.now_days)} = {sw.now_gain:+.0f})")
         elif when:
@@ -353,16 +361,18 @@ def roster_moves(lg, a, decided):
     if lg.today.weekday() == 0:
         print("- 📋 New week: set your lineups for the week.")
     print("- Streaming spots: " + (", ".join(f"{q.name} (form {q.form:.1f})" for q in flex) or "none"))
-    settled = lg.week_settled()
+    dead = getattr(lg, "moves_skipped", 0) and lg.week_dead()
     if decided:
-        # A decided week only blocks moves judged on this week's games; one for next week's first game still counts.
-        kept = [r for r in plan if r[4].effective > lg.week_days[-1]]
-        if len(kept) < len(plan) or settled is not None:
-            print(f"- **Skip** · week {lg.matchup_period} is decided; this week's moves can't change the result.")
+        # A decided week only blocks moves judged on this week's games; next week's games and clear upgrades still count.
+        kept = [r for r in plan if r[4].effective > lg.week_days[-1] or getattr(r[4], "zone", None) == "upgrade"]
+        if len(kept) < len(plan) or dead:
+            print(f"- **Skip** · week {lg.matchup_period} is decided; this week's moves can't change the result"
+                  + ("." if kept else "; no clear upgrade available."))
         plan, alts = kept, ([r for r in alts if r[4].effective > lg.week_days[-1]] if kept else [])
-    elif settled is not None:
-        print(f"- **Skip** · week {lg.matchup_period} is settled ({settled:.0%} win chance); "
-              "today's points can't change it, and a move's costs would land next week.")
+    elif dead:
+        imp = lg.move_impact(POLICY["impact_typical_gain"])
+        print(f"- **Skip** · week {lg.matchup_period} can't be moved (a +{POLICY['impact_typical_gain']:.0f} FP move changes "
+              f"the win chance by {100 * imp:.1f} pts)" + ("; only clear upgrades below." if plan else "; no clear upgrade available."))
     elif not plan:
         nxt = lg.game_days(lg.today, 1)
         print(f"- **Hold** · no move adds {POLICY['stream_min_gain']:.0f}+ FP"

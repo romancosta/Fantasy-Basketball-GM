@@ -62,6 +62,16 @@ Global flags (before the command): `--fresh` (skip 5-min cache), `--mode aggress
   TONIGHT), judged on the next game day. A drop whose game has tipped, a waiver claim, or a move where neither player
   has a game left today counts from the next game day. Moves for today rank ahead of moves for later days; among
   near-ties for the same day a move that can be made now wins over one that waits, then the easier SOS.
+- **Impact zones.** A move for this week's games is worth what it changes our win chance: the share of the week
+  simulation's outcomes its FP turns from a loss into a win (shown as `win chance +2.3 pts`). >= 1.5 pts: recommended;
+  0.5-1.5: `Optional, low impact` (hidden if it costs us on the next game day, e.g. `Mon −19 if not refilled`); below
+  0.5: skipped. Week 2: an 80% favourite midweek gained 3-6 pts per +30 FP move, an 88% Monday favourite 2.3, the
+  99.6% Sunday 0.35. Moves judged on next week's games are always recommended (`new week`).
+- **Dead week** (a +30 FP move changes the win chance by < 0.5 pts, or the decided-week stress test passes): only
+  **clear upgrades** are suggested (`⬆️ Upgrade`): an add with 8+ games, a rest-of-season rate 3+ FP/G higher and form at
+  least as good, who fits the lineup on one of his next 3 game days. The pre-tip check sends no pickups then.
+- Each move shows its effect on the following game day (`Mon −19 if not refilled`): the plan assumes the next day's
+  report refills that hole.
 - The tool recommends the **best single move first**, then re-plans with that move applied for any other streaming
   spot. Alternatives are other adds for the same spot.
 - Move frequency is not a concern - churn streaming spots as often as it pays (expect ~2 moves a day).

@@ -16,14 +16,18 @@ def evening(lg, a):
         return "OK", ["EVENING OK · no NBA games scheduled ahead"]
     target = nxt[0]
     flex, _, plan, alts = plan_moves(lg, a)
-    # Only moves judged on the next game day; anything still about tonight's late games is the pre-tip check's job.
-    plan = [r for r in plan if r[4].days and r[4].days[0][0] == target]
+    # Only moves judged on the next game day (plus clear upgrades in a week that can't be moved); anything still about
+    # tonight's late games is the pre-tip check's job.
+    upgrade = [r for r in plan if getattr(r[4], "zone", None) == "upgrade"]
+    plan = [r for r in plan if r[4].days and r[4].days[0][0] == target and r not in upgrade]
     alts = [r for r in alts if r[4].days and r[4].days[0][0] == target] if plan else []
-    if target <= lg.week_days[-1] and lg.week_settled() is not None:
-        return "OK", [f"EVENING OK · week {lg.matchup_period} is settled ({lg.week_settled():.0%} win chance); "
-                      f"no moves needed for {target:%a %m/%d}"]
     if plan and target <= lg.week_days[-1] and week_is_decided(lg):
-        return "OK", [f"EVENING OK · week {lg.matchup_period} is decided; no moves needed for {target:%a %m/%d}"]
+        plan, alts = [], []
+    if not plan and target <= lg.week_days[-1] and (getattr(lg, "moves_skipped", 0) and lg.week_dead()
+                                                     or week_is_decided(lg)):
+        if not upgrade:
+            return "OK", [f"EVENING OK · week {lg.matchup_period} can't be moved; no moves needed for {target:%a %m/%d}"]
+        plan = upgrade
     if not plan:
         return "OK", [f"EVENING OK · no streaming move adds {POLICY['stream_min_gain']:.0f}+ FP on {target:%a %m/%d}"]
     first = min((t for g in lg.games.values() for d, t in g.items() if d == target), default=None)

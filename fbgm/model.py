@@ -1,4 +1,5 @@
 """League state, player valuation, schedule, and lineup optimization."""
+import bisect
 import contextlib
 import datetime as dt
 import random
@@ -351,13 +352,24 @@ class League:
             cache[(team_id, opp_id)] = self.simulate_week(team_id=team_id, opp_id=opp_id)[0]
         return cache[(team_id, opp_id)]
 
-    def week_settled(self):
-        """Our win chance when this matchup week is effectively settled (>= settled_win or <= settled_loss), else None.
-        Moves judged on this week's games are skipped then."""
-        if not hasattr(self, "_settled"):
-            p = self.win_probability()
-            self._settled = p if p >= POLICY["settled_win"] or p <= POLICY["settled_loss"] else None
-        return self._settled
+    def week_margins(self):
+        """Sorted simulated final margins (us minus opponent) for this matchup week; cached per run."""
+        if not hasattr(self, "_margins"):
+            self._margins = self.simulate_week()[1]
+        return self._margins
+
+    def move_impact(self, gain):
+        """How much `gain` extra FP this week raises our win chance: the share of simulated weeks it turns from a loss
+        (or tie) into a win. None without a simulation."""
+        m = self.week_margins()
+        if not m:
+            return None
+        return (bisect.bisect_right(m, 0) - bisect.bisect_right(m, -gain)) / len(m)
+
+    def week_dead(self):
+        """True when a typical streaming move can't move this week's result (impact below impact_skip)."""
+        imp = self.move_impact(POLICY["impact_typical_gain"])
+        return imp is not None and imp < POLICY["impact_skip"]
 
     # ---- back-to-back rest ---------------------------------------------
     def b2b_leg(self, pl, day):

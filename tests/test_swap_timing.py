@@ -54,7 +54,7 @@ def make_lg(roster, fas, games, now):
     lg.roster = lambda team_id=None: lg.rosters[31]
     lg.free_agents, lg.players, lg.pro_abbrev = list(fas), {}, {1: "GS", 2: "GS", 3: "LAL", 4: "BOS"}
     lg._rest_watch = set()
-    lg._settled = None          # matchup still open
+    lg._margins = []            # no week simulation: every move counts as recommended
     return lg
 
 
@@ -177,24 +177,74 @@ class SwapTiming(unittest.TestCase):
         self.assertAlmostEqual(lg.evaluate_swap(tonight, idle, [podz, big, idle]).gain, 30.0)
 
 
-class SettledWeek(unittest.TestCase):
-    def test_settled_week_skips_this_weeks_moves(self):
-        lg, _, _ = kuminga_case(now=at(SAT, 21))       # +Podziemski counts from Sunday, still this week
-        lg._settled = 0.99
+WON = [500.0] * 1000                                   # every simulated week a big win: nothing moves it
+CLOSE = sorted([-40.0] * 30 + [-10.0] * 10 + [40.0] * 960)   # +45 FP flips 4%; +15 FP flips 1%
+
+
+class ImpactZones(unittest.TestCase):
+    def test_impact_is_the_share_of_losses_a_gain_flips(self):
+        lg, _, _ = kuminga_case()
+        lg._margins = CLOSE
+        self.assertAlmostEqual(lg.move_impact(45), 0.04)
+        self.assertAlmostEqual(lg.move_impact(15), 0.01)
+        self.assertAlmostEqual(lg.move_impact(5), 0.0)
+
+    def test_dead_week_skips_this_weeks_moves(self):
+        lg, _, podz = kuminga_case(now=at(SAT, 21))    # +Podziemski counts from Sunday, still this week
+        lg._margins, lg.matchup_period, podz.gp = WON, 2, 4   # 4 games: not a proven upgrade
         _, _, plan, _ = gm.plan_moves(lg, NS(mode=None, n=3))
         self.assertEqual(plan, [])
-        lg.matchup_period = 2
         text = out(report.roster_moves, lg, NS(mode=None, n=3), None)
-        self.assertIn("**Skip** · week 2 is settled (99% win chance)", text)
+        self.assertIn("**Skip** · week 2 can't be moved (a +30 FP move changes the win chance by 0.0 pts); "
+                      "no clear upgrade available.", text)
 
-    def test_settled_week_keeps_next_weeks_moves(self):
+    def test_dead_week_still_offers_a_clear_upgrade(self):
+        lg, kuminga, podz = kuminga_case(now=at(SAT, 21))
+        lg._margins, lg.matchup_period = WON, 2
+        podz.rate, podz.form, podz.gp = 45.0, 45.0, 10   # proven: 8+ GP, rate +10 over Kuminga, better form
+        _, _, plan, _ = gm.plan_moves(lg, NS(mode=None, n=3))
+        self.assertEqual([(r[2].name, r[3].name, r[4].zone) for r in plan],
+                         [("Brandin Podziemski", "Jonathan Kuminga", "upgrade")])
+        text = out(report.roster_moves, lg, NS(mode=None, n=3), None)
+        self.assertIn("only clear upgrades below", text)
+        self.assertIn("⬆️ **Upgrade: +Brandin Podziemski / −Jonathan Kuminga**: rate **45.0 vs 35.0**", text)
+
+    def test_unproven_add_is_not_an_upgrade(self):
+        lg, _, podz = kuminga_case(now=at(SAT, 21))
+        lg._margins = WON
+        podz.rate, podz.form, podz.gp = 45.0, 45.0, 4    # only 4 games
+        self.assertEqual(gm.plan_moves(lg, NS(mode=None, n=3))[2], [])
+
+    def test_low_impact_move_is_optional(self):
+        lg, _, _ = kuminga_case(now=at(SAT, 21))
+        lg._margins = sorted([-40.0] * 10 + [100.0] * 990)   # +45 FP flips 1%: optional
+        _, _, plan, _ = gm.plan_moves(lg, NS(mode=None, n=3))
+        self.assertEqual([(r[4].zone, round(100 * r[4].impact, 1)) for r in plan], [("optional", 1.0)])
+        text = out(report.roster_moves, lg, NS(mode=None, n=3), None)
+        self.assertIn("_Optional, low impact:_ **+Brandin Podziemski / −Jonathan Kuminga**: **+45 FP Sun** · "
+                      "win chance +1.0 pts", text)
+
+    def test_low_impact_move_with_a_next_day_cost_is_hidden(self):
+        lg, kuminga, podz = kuminga_case(add_games={SAT: at(SAT, 19)})
+        lg.games[1] = {SAT: at(SAT, 20), SUN: at(SUN, 15)}
+        podz.expected = podz.form = podz.rate = 50.0      # +15 Sat, but Kuminga would have started Sunday
+        lg._margins = sorted([-10.0] * 10 + [100.0] * 990)
+        self.assertEqual(gm.plan_moves(lg, NS(mode=None, n=3))[2], [])
+
+    def test_recommended_move_shows_its_impact(self):
+        lg, _, _ = kuminga_case(now=at(SAT, 21))
+        lg._margins = CLOSE
+        text = out(report.roster_moves, lg, NS(mode=None, n=3), None)
+        self.assertIn("**+45 FP Sun** · win chance +4.0 pts", text)
+
+    def test_dead_week_keeps_next_weeks_moves(self):
         mon = dt.date(2026, 11, 2)
         kuminga = P("Jonathan Kuminga", {0}, 0, 35.0, team=1)
         big = P("Core Big", {1}, 1, 50.0, team=3)
         add = P("Monday Guard", {0}, None, 40.0, team=2, status="FREEAGENT")
         games = {1: {SUN: at(SUN, 15)}, 2: {mon: at(mon, 19)}, 3: {SUN: at(SUN, 18), mon: at(mon, 19)}}
         lg = make_lg([kuminga, big], [add], games, at(SUN, 22))
-        lg._settled = 0.99
+        lg._margins = WON
         _, _, plan, _ = gm.plan_moves(lg, NS(mode=None, n=3))
         self.assertEqual([(r[2].name, r[4].days) for r in plan], [("Monday Guard", [(mon, 40.0)])])
 
