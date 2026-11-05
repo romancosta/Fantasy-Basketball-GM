@@ -1,0 +1,105 @@
+{
+ "date": "2026-11-04",
+ "final": false,
+ "period": 3,
+ "teams": {
+  "1": {
+   "day": 434.0,
+   "players": {
+    "Ace Bailey": {
+     "bench": false,
+     "pts": 32.0
+    },
+    "Bam Adebayo": {
+     "bench": false,
+     "pts": 91.0
+    },
+    "Davion Mitchell": {
+     "bench": false,
+     "pts": 54.0
+    },
+    "Kel'el Ware": {
+     "bench": false,
+     "pts": 17.0
+    },
+    "Keyonte George": {
+     "bench": false,
+     "pts": 88.0
+    },
+    "Moussa Diabate": {
+     "bench": true,
+     "pts": 28.0
+    },
+    "Paul George": {
+     "bench": false,
+     "pts": 49.0
+    },
+    "Scottie Barnes": {
+     "bench": false,
+     "pts": 47.0
+    },
+    "Stephon Castle": {
+     "bench": false,
+     "pts": 56.0
+    }
+   },
+   "total": 785.0
+  },
+  "31": {
+   "day": 634.0,
+   "players": {
+    "Alperen Sengun": {
+     "bench": false,
+     "pts": 89.0
+    },
+    "Damian Lillard": {
+     "bench": true,
+     "pts": 53.0
+    },
+    "Domantas Sabonis": {
+     "bench": false,
+     "pts": 72.0
+    },
+    "Donovan Clingan": {
+     "bench": false,
+     "pts": 70.0
+    },
+    "Jabari Smith Jr.": {
+     "bench": false,
+     "pts": 34.0
+    },
+    "Jamal Murray": {
+     "bench": false,
+     "pts": 43.0
+    },
+    "Jaylen Brown": {
+     "bench": false,
+     "pts": 67.0
+    },
+    "Jonathan Kuminga": {
+     "bench": true,
+     "pts": 51.0
+    },
+    "LeBron James": {
+     "bench": false,
+     "pts": 59.0
+    },
+    "Michael Porter Jr.": {
+     "bench": false,
+     "pts": 61.0
+    },
+    "RJ Barrett": {
+     "bench": false,
+     "pts": 52.0
+    },
+    "Shai Gilgeous-Alexander": {
+     "bench": false,
+     "pts": 87.0
+    }
+   },
+   "total": 1299.0
+  }
+ },
+ "version": 2,
+ "winner": null
+}

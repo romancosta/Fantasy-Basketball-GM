@@ -1,0 +1,57 @@
+{
+ "date": "2026-11-05",
+ "me": 31,
+ "opp": 1,
+ "period": 3,
+ "teams": {
+  "1": {
+   "day": 253.2,
+   "players": {
+    "Anthony Black": {
+     "avail": 1.0,
+     "lineup": true,
+     "proj": 38.8,
+     "rest": 0.0
+    },
+    "Bam Adebayo": {
+     "avail": 1.0,
+     "lineup": true,
+     "proj": 56.1,
+     "rest": 0.013
+    },
+    "Brandin Podziemski": {
+     "avail": 1.0,
+     "lineup": true,
+     "proj": 41.1,
+     "rest": 0.0
+    },
+    "Davion Mitchell": {
+     "avail": 1.0,
+     "lineup": true,
+     "proj": 28.3,
+     "rest": 0.236
+    },
+    "Dillon Brooks": {
+     "avail": 1.0,
+     "lineup": true,
+     "proj": 36.5,
+     "rest": 0.019
+    },
+    "Franz Wagner": {
+     "avail": 1.0,
+     "lineup": true,
+     "proj": 52.4,
+     "rest": 0.0
+    }
+   },
+   "week": 1724.3
+  },
+  "31": {
+   "day": 0.0,
+   "players": {},
+   "week": 2300.0
+  }
+ },
+ "version": 2,
+ "win_prob": 0.99925
+}
