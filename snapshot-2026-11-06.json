@@ -1,0 +1,130 @@
+{
+ "date": "2026-11-06",
+ "me": 31,
+ "opp": 1,
+ "period": 3,
+ "teams": {
+  "1": {
+   "day": 408.1,
+   "players": {
+    "Cedric Coward": {
+     "avail": 1.0,
+     "lineup": true,
+     "proj": 41.3,
+     "rest": 0.0
+    },
+    "Derik Queen": {
+     "avail": 1.0,
+     "lineup": true,
+     "proj": 41.6,
+     "rest": 0.0
+    },
+    "Jaime Jaquez Jr.": {
+     "avail": 1.0,
+     "lineup": true,
+     "proj": 40.8,
+     "rest": 0.0
+    },
+    "Kel'el Ware": {
+     "avail": 1.0,
+     "lineup": true,
+     "proj": 38.4,
+     "rest": 0.0
+    },
+    "Keyonte George": {
+     "avail": 1.0,
+     "lineup": true,
+     "proj": 50.6,
+     "rest": 0.0
+    },
+    "P.J. Washington": {
+     "avail": 1.0,
+     "lineup": true,
+     "proj": 40.0,
+     "rest": 0.0
+    },
+    "Paul George": {
+     "avail": 1.0,
+     "lineup": true,
+     "proj": 48.2,
+     "rest": 0.0
+    },
+    "Scottie Barnes": {
+     "avail": 0.6,
+     "lineup": true,
+     "proj": 35.7,
+     "rest": 0.0
+    },
+    "Stephon Castle": {
+     "avail": 1.0,
+     "lineup": true,
+     "proj": 45.7,
+     "rest": 0.013
+    },
+    "Trey Murphy III": {
+     "avail": 0.6,
+     "lineup": true,
+     "proj": 25.8,
+     "rest": 0.0
+    }
+   },
+   "week": 1874.5
+  },
+  "31": {
+   "day": 419.1,
+   "players": {
+    "Ayo Dosunmu": {
+     "avail": 1.0,
+     "lineup": true,
+     "proj": 40.8,
+     "rest": 0.0
+    },
+    "Damian Lillard": {
+     "avail": 1.0,
+     "lineup": true,
+     "proj": 44.9,
+     "rest": 0.05
+    },
+    "Domantas Sabonis": {
+     "avail": 1.0,
+     "lineup": true,
+     "proj": 62.3,
+     "rest": 0.0
+    },
+    "Donovan Clingan": {
+     "avail": 1.0,
+     "lineup": true,
+     "proj": 46.7,
+     "rest": 0.014
+    },
+    "Jaylen Brown": {
+     "avail": 1.0,
+     "lineup": true,
+     "proj": 57.5,
+     "rest": 0.0
+    },
+    "LeBron James": {
+     "avail": 1.0,
+     "lineup": true,
+     "proj": 55.5,
+     "rest": 0.0
+    },
+    "RJ Barrett": {
+     "avail": 1.0,
+     "lineup": true,
+     "proj": 48.7,
+     "rest": 0.0
+    },
+    "Shai Gilgeous-Alexander": {
+     "avail": 1.0,
+     "lineup": true,
+     "proj": 62.7,
+     "rest": 0.078
+    }
+   },
+   "week": 2300.0
+  }
+ },
+ "version": 2,
+ "win_prob": 0.99375
+}

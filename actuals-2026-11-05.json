@@ -1,0 +1,40 @@
+{
+ "date": "2026-11-05",
+ "final": false,
+ "period": 3,
+ "teams": {
+  "1": {
+   "day": 244.0,
+   "players": {
+    "Anthony Black": {
+     "bench": false,
+     "pts": 38.0
+    },
+    "Bam Adebayo": {
+     "bench": false,
+     "pts": 61.0
+    },
+    "Brandin Podziemski": {
+     "bench": false,
+     "pts": 33.0
+    },
+    "Davion Mitchell": {
+     "bench": false,
+     "pts": 43.0
+    },
+    "Franz Wagner": {
+     "bench": false,
+     "pts": 69.0
+    }
+   },
+   "total": 1029.0
+  },
+  "31": {
+   "day": 0.0,
+   "players": {},
+   "total": 1299.0
+  }
+ },
+ "version": 2,
+ "winner": null
+}
