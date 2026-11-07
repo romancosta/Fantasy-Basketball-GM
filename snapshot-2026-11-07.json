@@ -1,0 +1,76 @@
+{
+ "date": "2026-11-07",
+ "me": 31,
+ "opp": 1,
+ "period": 3,
+ "teams": {
+  "1": {
+   "day": 96.7,
+   "players": {
+    "Franz Wagner": {
+     "avail": 1.0,
+     "lineup": true,
+     "proj": 53.4,
+     "rest": 0.0
+    },
+    "Stephon Castle": {
+     "avail": 1.0,
+     "lineup": true,
+     "proj": 43.3,
+     "rest": 0.066
+    }
+   },
+   "week": 1784.0
+  },
+  "31": {
+   "day": 322.8,
+   "players": {
+    "Alperen Sengun": {
+     "avail": 1.0,
+     "lineup": true,
+     "proj": 66.4,
+     "rest": 0.0
+    },
+    "Damian Lillard": {
+     "avail": 1.0,
+     "lineup": false,
+     "proj": 44.3,
+     "rest": 0.05
+    },
+    "Donovan Clingan": {
+     "avail": 1.0,
+     "lineup": true,
+     "proj": 47.2,
+     "rest": 0.014
+    },
+    "Jabari Smith Jr.": {
+     "avail": 1.0,
+     "lineup": true,
+     "proj": 42.4,
+     "rest": 0.0
+    },
+    "Jamal Murray": {
+     "avail": 1.0,
+     "lineup": true,
+     "proj": 58.2,
+     "rest": 0.0
+    },
+    "Michael Porter Jr.": {
+     "avail": 1.0,
+     "lineup": true,
+     "proj": 42.5,
+     "rest": 0.173
+    },
+    "Shai Gilgeous-Alexander": {
+     "avail": 1.0,
+     "lineup": true,
+     "proj": 66.1,
+     "rest": 0.016
+    }
+   },
+   "week": 2265.1
+  }
+ },
+ "version": 2,
+ "win_prob": 0.99975
+}

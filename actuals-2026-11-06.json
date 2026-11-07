@@ -1,0 +1,89 @@
+{
+ "date": "2026-11-06",
+ "final": false,
+ "period": 3,
+ "teams": {
+  "1": {
+   "day": 307.0,
+   "players": {
+    "Cedric Coward": {
+     "bench": false,
+     "pts": 31.0
+    },
+    "Derik Queen": {
+     "bench": false,
+     "pts": 13.0
+    },
+    "Jaime Jaquez Jr.": {
+     "bench": false,
+     "pts": 36.0
+    },
+    "Kel'el Ware": {
+     "bench": false,
+     "pts": 14.0
+    },
+    "Keyonte George": {
+     "bench": false,
+     "pts": 47.0
+    },
+    "P.J. Washington": {
+     "bench": false,
+     "pts": 58.0
+    },
+    "Paul George": {
+     "bench": false,
+     "pts": 23.0
+    },
+    "Stephon Castle": {
+     "bench": false,
+     "pts": 48.0
+    },
+    "Trey Murphy III": {
+     "bench": false,
+     "pts": 37.0
+    }
+   },
+   "total": 1334.0
+  },
+  "31": {
+   "day": 389.0,
+   "players": {
+    "Ayo Dosunmu": {
+     "bench": false,
+     "pts": 49.0
+    },
+    "Damian Lillard": {
+     "bench": false,
+     "pts": 37.0
+    },
+    "Domantas Sabonis": {
+     "bench": false,
+     "pts": 56.0
+    },
+    "Donovan Clingan": {
+     "bench": false,
+     "pts": 56.0
+    },
+    "Jaylen Brown": {
+     "bench": false,
+     "pts": 48.0
+    },
+    "LeBron James": {
+     "bench": false,
+     "pts": 28.0
+    },
+    "RJ Barrett": {
+     "bench": false,
+     "pts": 63.0
+    },
+    "Shai Gilgeous-Alexander": {
+     "bench": false,
+     "pts": 52.0
+    }
+   },
+   "total": 1686.0
+  }
+ },
+ "version": 2,
+ "winner": null
+}
