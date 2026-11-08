@@ -1,0 +1,100 @@
+{
+ "date": "2026-11-08",
+ "me": 31,
+ "opp": 1,
+ "period": 3,
+ "teams": {
+  "1": {
+   "day": 353.3,
+   "players": {
+    "Bam Adebayo": {
+     "avail": 1.0,
+     "lineup": true,
+     "proj": 57.0,
+     "rest": 0.0
+    },
+    "Derik Queen": {
+     "avail": 1.0,
+     "lineup": true,
+     "proj": 39.5,
+     "rest": 0.011
+    },
+    "Jaime Jaquez Jr.": {
+     "avail": 1.0,
+     "lineup": true,
+     "proj": 40.5,
+     "rest": 0.0
+    },
+    "Kel'el Ware": {
+     "avail": 1.0,
+     "lineup": true,
+     "proj": 37.0,
+     "rest": 0.0
+    },
+    "Keyonte George": {
+     "avail": 1.0,
+     "lineup": true,
+     "proj": 50.4,
+     "rest": 0.0
+    },
+    "P.J. Washington": {
+     "avail": 1.0,
+     "lineup": true,
+     "proj": 40.2,
+     "rest": 0.019
+    },
+    "Paul George": {
+     "avail": 1.0,
+     "lineup": true,
+     "proj": 46.6,
+     "rest": 0.0
+    },
+    "Trey Murphy III": {
+     "avail": 1.0,
+     "lineup": true,
+     "proj": 42.1,
+     "rest": 0.015
+    }
+   },
+   "week": 1811.3
+  },
+  "31": {
+   "day": 256.5,
+   "players": {
+    "Ayo Dosunmu": {
+     "avail": 1.0,
+     "lineup": true,
+     "proj": 41.2,
+     "rest": 0.0
+    },
+    "Domantas Sabonis": {
+     "avail": 1.0,
+     "lineup": true,
+     "proj": 61.9,
+     "rest": 0.0
+    },
+    "Jaylen Brown": {
+     "avail": 1.0,
+     "lineup": true,
+     "proj": 56.9,
+     "rest": 0.0
+    },
+    "LeBron James": {
+     "avail": 1.0,
+     "lineup": true,
+     "proj": 53.8,
+     "rest": 0.0
+    },
+    "Michael Porter Jr.": {
+     "avail": 1.0,
+     "lineup": true,
+     "proj": 42.7,
+     "rest": 0.173
+    }
+   },
+   "week": 2228.5
+  }
+ },
+ "version": 2,
+ "win_prob": 1.0
+}

@@ -1,0 +1,57 @@
+{
+ "date": "2026-11-07",
+ "final": false,
+ "period": 3,
+ "teams": {
+  "1": {
+   "day": 124.0,
+   "players": {
+    "Franz Wagner": {
+     "bench": false,
+     "pts": 78.0
+    },
+    "Stephon Castle": {
+     "bench": false,
+     "pts": 46.0
+    }
+   },
+   "total": 1458.0
+  },
+  "31": {
+   "day": 288.0,
+   "players": {
+    "Alperen Sengun": {
+     "bench": false,
+     "pts": 45.0
+    },
+    "Damian Lillard": {
+     "bench": true,
+     "pts": 26.0
+    },
+    "Donovan Clingan": {
+     "bench": false,
+     "pts": 20.0
+    },
+    "Jabari Smith Jr.": {
+     "bench": false,
+     "pts": 53.0
+    },
+    "Jamal Murray": {
+     "bench": false,
+     "pts": 49.0
+    },
+    "Michael Porter Jr.": {
+     "bench": false,
+     "pts": 55.0
+    },
+    "Shai Gilgeous-Alexander": {
+     "bench": false,
+     "pts": 66.0
+    }
+   },
+   "total": 1972.0
+  }
+ },
+ "version": 2,
+ "winner": null
+}
