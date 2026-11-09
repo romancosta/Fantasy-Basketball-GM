@@ -1,0 +1,88 @@
+{
+ "date": "2026-11-09",
+ "me": 31,
+ "opp": 32,
+ "period": 4,
+ "teams": {
+  "31": {
+   "day": 192.1,
+   "players": {
+    "Alperen Sengun": {
+     "avail": 1.0,
+     "lineup": true,
+     "proj": 65.1,
+     "rest": 0.0
+    },
+    "Jabari Smith Jr.": {
+     "avail": 1.0,
+     "lineup": true,
+     "proj": 43.0,
+     "rest": 0.0
+    },
+    "Jamal Murray": {
+     "avail": 0.6,
+     "lineup": true,
+     "proj": 34.6,
+     "rest": 0.0
+    },
+    "RJ Barrett": {
+     "avail": 1.0,
+     "lineup": true,
+     "proj": 49.4,
+     "rest": 0.0
+    }
+   },
+   "week": 1721.3
+  },
+  "32": {
+   "day": 278.1,
+   "players": {
+    "Aaron Gordon": {
+     "avail": 0.6,
+     "lineup": true,
+     "proj": 22.3,
+     "rest": 0.0
+    },
+    "CJ McCollum": {
+     "avail": 1.0,
+     "lineup": true,
+     "proj": 36.5,
+     "rest": 0.0
+    },
+    "DeMar DeRozan": {
+     "avail": 0.6,
+     "lineup": true,
+     "proj": 20.9,
+     "rest": 0.0
+    },
+    "Devin Booker": {
+     "avail": 1.0,
+     "lineup": true,
+     "proj": 54.3,
+     "rest": 0.013
+    },
+    "Naz Reid": {
+     "avail": 1.0,
+     "lineup": true,
+     "proj": 41.7,
+     "rest": 0.0
+    },
+    "Nickeil Alexander-Walker": {
+     "avail": 1.0,
+     "lineup": true,
+     "proj": 43.6,
+     "rest": 0.0
+    },
+    "Stephen Curry": {
+     "avail": 1.0,
+     "lineup": true,
+     "proj": 58.8,
+     "rest": 0.0
+    }
+   },
+   "week": 1371.1
+  }
+ },
+ "version": 2,
+ "win_prob": 0.90425
+}

@@ -1,0 +1,69 @@
+{
+ "date": "2026-11-08",
+ "final": true,
+ "period": 3,
+ "teams": {
+  "1": {
+   "day": 241.0,
+   "players": {
+    "Bam Adebayo": {
+     "bench": false,
+     "pts": 59.0
+    },
+    "Derik Queen": {
+     "bench": true,
+     "pts": 29.0
+    },
+    "Jaime Jaquez Jr.": {
+     "bench": false,
+     "pts": 17.0
+    },
+    "Kel'el Ware": {
+     "bench": false,
+     "pts": 2.0
+    },
+    "Keyonte George": {
+     "bench": false,
+     "pts": 59.0
+    },
+    "P.J. Washington": {
+     "bench": true,
+     "pts": 18.0
+    },
+    "Paul George": {
+     "bench": false,
+     "pts": 47.0
+    },
+    "Trey Murphy III": {
+     "bench": false,
+     "pts": 57.0
+    }
+   },
+   "total": 1699.0
+  },
+  "31": {
+   "day": 209.0,
+   "players": {
+    "Ayo Dosunmu": {
+     "bench": false,
+     "pts": 45.0
+    },
+    "Jaylen Brown": {
+     "bench": false,
+     "pts": 69.0
+    },
+    "LeBron James": {
+     "bench": false,
+     "pts": 49.0
+    },
+    "Michael Porter Jr.": {
+     "bench": false,
+     "pts": 46.0
+    }
+   },
+   "total": 2181.0
+  }
+ },
+ "version": 2,
+ "winner": 31
+}
