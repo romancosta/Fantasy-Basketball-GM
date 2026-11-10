@@ -1,0 +1,69 @@
+{
+ "date": "2026-11-09",
+ "final": false,
+ "period": 4,
+ "teams": {
+  "31": {
+   "day": 234.0,
+   "players": {
+    "Alperen Sengun": {
+     "bench": false,
+     "pts": 80.0
+    },
+    "Jabari Smith Jr.": {
+     "bench": false,
+     "pts": 43.0
+    },
+    "Jamal Murray": {
+     "bench": false,
+     "pts": 69.0
+    },
+    "RJ Barrett": {
+     "bench": false,
+     "pts": 42.0
+    }
+   },
+   "total": 234.0
+  },
+  "32": {
+   "day": 322.0,
+   "players": {
+    "Aaron Gordon": {
+     "bench": false,
+     "pts": 15.0
+    },
+    "CJ McCollum": {
+     "bench": false,
+     "pts": 35.0
+    },
+    "DeMar DeRozan": {
+     "bench": false,
+     "pts": 24.0
+    },
+    "Devin Booker": {
+     "bench": false,
+     "pts": 68.0
+    },
+    "Luka Doncic": {
+     "bench": true,
+     "pts": 93.0
+    },
+    "Naz Reid": {
+     "bench": false,
+     "pts": 74.0
+    },
+    "Nickeil Alexander-Walker": {
+     "bench": false,
+     "pts": 54.0
+    },
+    "Stephen Curry": {
+     "bench": false,
+     "pts": 52.0
+    }
+   },
+   "total": 322.0
+  }
+ },
+ "version": 2,
+ "winner": null
+}
