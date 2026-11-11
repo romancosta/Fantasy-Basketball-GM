@@ -1,0 +1,61 @@
+{
+ "date": "2026-11-10",
+ "final": false,
+ "period": 4,
+ "teams": {
+  "31": {
+   "day": 257.0,
+   "players": {
+    "Damian Lillard": {
+     "bench": false,
+     "pts": 52.0
+    },
+    "Domantas Sabonis": {
+     "bench": false,
+     "pts": 14.0
+    },
+    "Donovan Clingan": {
+     "bench": false,
+     "pts": 48.0
+    },
+    "Jaylen Brown": {
+     "bench": false,
+     "pts": 35.0
+    },
+    "LeBron James": {
+     "bench": false,
+     "pts": 42.0
+    },
+    "Shai Gilgeous-Alexander": {
+     "bench": false,
+     "pts": 66.0
+    }
+   },
+   "total": 234.0
+  },
+  "32": {
+   "day": 189.0,
+   "players": {
+    "Devin Booker": {
+     "bench": false,
+     "pts": 33.0
+    },
+    "Karl-Anthony Towns": {
+     "bench": false,
+     "pts": 81.0
+    },
+    "Mikal Bridges": {
+     "bench": false,
+     "pts": 28.0
+    },
+    "Wendell Carter Jr.": {
+     "bench": false,
+     "pts": 47.0
+    }
+   },
+   "total": 322.0
+  }
+ },
+ "version": 2,
+ "winner": null
+}

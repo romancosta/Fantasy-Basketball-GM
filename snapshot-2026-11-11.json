@@ -1,0 +1,112 @@
+{
+ "date": "2026-11-11",
+ "me": 31,
+ "opp": 32,
+ "period": 4,
+ "teams": {
+  "31": {
+   "day": 378.4,
+   "players": {
+    "Alperen Sengun": {
+     "avail": 1.0,
+     "lineup": true,
+     "proj": 65.9,
+     "rest": 0.0
+    },
+    "Damian Lillard": {
+     "avail": 1.0,
+     "lineup": false,
+     "proj": 43.9,
+     "rest": 0.042
+    },
+    "Donovan Clingan": {
+     "avail": 1.0,
+     "lineup": true,
+     "proj": 45.7,
+     "rest": 0.013
+    },
+    "Jabari Smith Jr.": {
+     "avail": 1.0,
+     "lineup": true,
+     "proj": 43.0,
+     "rest": 0.0
+    },
+    "Jamal Murray": {
+     "avail": 1.0,
+     "lineup": true,
+     "proj": 58.3,
+     "rest": 0.0
+    },
+    "Michael Porter Jr.": {
+     "avail": 1.0,
+     "lineup": true,
+     "proj": 51.3,
+     "rest": 0.0
+    },
+    "RJ Barrett": {
+     "avail": 1.0,
+     "lineup": true,
+     "proj": 48.2,
+     "rest": 0.018
+    },
+    "Shai Gilgeous-Alexander": {
+     "avail": 1.0,
+     "lineup": true,
+     "proj": 66.0,
+     "rest": 0.015
+    }
+   },
+   "week": 1913.3
+  },
+  "32": {
+   "day": 345.5,
+   "players": {
+    "Aaron Gordon": {
+     "avail": 1.0,
+     "lineup": true,
+     "proj": 35.9,
+     "rest": 0.0
+    },
+    "DeMar DeRozan": {
+     "avail": 1.0,
+     "lineup": true,
+     "proj": 34.2,
+     "rest": 0.0
+    },
+    "Karl-Anthony Towns": {
+     "avail": 1.0,
+     "lineup": true,
+     "proj": 64.5,
+     "rest": 0.015
+    },
+    "Luka Doncic": {
+     "avail": 1.0,
+     "lineup": true,
+     "proj": 85.2,
+     "rest": 0.0
+    },
+    "Mikal Bridges": {
+     "avail": 1.0,
+     "lineup": true,
+     "proj": 28.9,
+     "rest": 0.013
+    },
+    "Stephen Curry": {
+     "avail": 1.0,
+     "lineup": true,
+     "proj": 58.4,
+     "rest": 0.0
+    },
+    "Wendell Carter Jr.": {
+     "avail": 1.0,
+     "lineup": true,
+     "proj": 38.5,
+     "rest": 0.066
+    }
+   },
+   "week": 1657.0
+  }
+ },
+ "version": 2,
+ "win_prob": 0.86925
+}
