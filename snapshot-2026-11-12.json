@@ -1,0 +1,58 @@
+{
+ "date": "2026-11-12",
+ "me": 31,
+ "opp": 32,
+ "period": 4,
+ "teams": {
+  "31": {
+   "day": 170.9,
+   "players": {
+    "Ayo Dosunmu": {
+     "avail": 1.0,
+     "lineup": true,
+     "proj": 41.4,
+     "rest": 0.0
+    },
+    "Jaylen Brown": {
+     "avail": 1.0,
+     "lineup": true,
+     "proj": 56.4,
+     "rest": 0.0
+    },
+    "LeBron James": {
+     "avail": 0.6,
+     "lineup": true,
+     "proj": 31.7,
+     "rest": 0.0
+    },
+    "RJ Barrett": {
+     "avail": 1.0,
+     "lineup": true,
+     "proj": 41.3,
+     "rest": 0.161
+    }
+   },
+   "week": 1905.5
+  },
+  "32": {
+   "day": 97.9,
+   "players": {
+    "Devin Booker": {
+     "avail": 1.0,
+     "lineup": true,
+     "proj": 54.5,
+     "rest": 0.0
+    },
+    "Naz Reid": {
+     "avail": 1.0,
+     "lineup": true,
+     "proj": 43.4,
+     "rest": 0.0
+    }
+   },
+   "week": 1479.5
+  }
+ },
+ "version": 2,
+ "win_prob": 0.991
+}

@@ -1,0 +1,81 @@
+{
+ "date": "2026-11-11",
+ "final": false,
+ "period": 4,
+ "teams": {
+  "31": {
+   "day": 410.0,
+   "players": {
+    "Alperen Sengun": {
+     "bench": false,
+     "pts": 82.0
+    },
+    "Damian Lillard": {
+     "bench": true,
+     "pts": 39.0
+    },
+    "Donovan Clingan": {
+     "bench": false,
+     "pts": 43.0
+    },
+    "Jabari Smith Jr.": {
+     "bench": false,
+     "pts": 43.0
+    },
+    "Jamal Murray": {
+     "bench": false,
+     "pts": 72.0
+    },
+    "Michael Porter Jr.": {
+     "bench": false,
+     "pts": 52.0
+    },
+    "RJ Barrett": {
+     "bench": false,
+     "pts": 53.0
+    },
+    "Shai Gilgeous-Alexander": {
+     "bench": false,
+     "pts": 65.0
+    }
+   },
+   "total": 899.0
+  },
+  "32": {
+   "day": 231.0,
+   "players": {
+    "Aaron Gordon": {
+     "bench": false,
+     "pts": 28.0
+    },
+    "DeMar DeRozan": {
+     "bench": false,
+     "pts": 24.0
+    },
+    "Karl-Anthony Towns": {
+     "bench": false,
+     "pts": 74.0
+    },
+    "Luka Doncic": {
+     "bench": false,
+     "pts": 64.0
+    },
+    "Mikal Bridges": {
+     "bench": false,
+     "pts": 6.0
+    },
+    "Stephen Curry": {
+     "bench": false,
+     "pts": 2.0
+    },
+    "Wendell Carter Jr.": {
+     "bench": false,
+     "pts": 33.0
+    }
+   },
+   "total": 742.0
+  }
+ },
+ "version": 2,
+ "winner": null
+}
