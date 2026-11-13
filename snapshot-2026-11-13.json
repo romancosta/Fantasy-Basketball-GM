@@ -1,0 +1,88 @@
+{
+ "date": "2026-11-13",
+ "me": 31,
+ "opp": 32,
+ "period": 4,
+ "teams": {
+  "31": {
+   "day": 327.4,
+   "players": {
+    "Alperen Sengun": {
+     "avail": 1.0,
+     "lineup": true,
+     "proj": 66.7,
+     "rest": 0.0
+    },
+    "Damian Lillard": {
+     "avail": 1.0,
+     "lineup": true,
+     "proj": 45.4,
+     "rest": 0.0
+    },
+    "Domantas Sabonis": {
+     "avail": 1.0,
+     "lineup": true,
+     "proj": 59.2,
+     "rest": 0.0
+    },
+    "Donovan Clingan": {
+     "avail": 1.0,
+     "lineup": true,
+     "proj": 46.2,
+     "rest": 0.0
+    },
+    "Jabari Smith Jr.": {
+     "avail": 1.0,
+     "lineup": true,
+     "proj": 43.0,
+     "rest": 0.0
+    },
+    "Shai Gilgeous-Alexander": {
+     "avail": 1.0,
+     "lineup": true,
+     "proj": 66.9,
+     "rest": 0.0
+    }
+   },
+   "week": 1892.3
+  },
+  "32": {
+   "day": 215.3,
+   "players": {
+    "CJ McCollum": {
+     "avail": 1.0,
+     "lineup": true,
+     "proj": 36.4,
+     "rest": 0.0
+    },
+    "Karl-Anthony Towns": {
+     "avail": 1.0,
+     "lineup": true,
+     "proj": 65.9,
+     "rest": 0.0
+    },
+    "Mikal Bridges": {
+     "avail": 1.0,
+     "lineup": true,
+     "proj": 28.0,
+     "rest": 0.0
+    },
+    "Nickeil Alexander-Walker": {
+     "avail": 1.0,
+     "lineup": true,
+     "proj": 44.1,
+     "rest": 0.0
+    },
+    "Wendell Carter Jr.": {
+     "avail": 1.0,
+     "lineup": true,
+     "proj": 40.8,
+     "rest": 0.0
+    }
+   },
+   "week": 1458.0
+  }
+ },
+ "version": 2,
+ "win_prob": 0.99675
+}

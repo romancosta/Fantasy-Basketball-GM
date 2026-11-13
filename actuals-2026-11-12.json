@@ -1,0 +1,41 @@
+{
+ "date": "2026-11-12",
+ "final": false,
+ "period": 4,
+ "teams": {
+  "31": {
+   "day": 157.0,
+   "players": {
+    "Ayo Dosunmu": {
+     "bench": false,
+     "pts": 34.0
+    },
+    "Jaylen Brown": {
+     "bench": false,
+     "pts": 41.0
+    },
+    "RJ Barrett": {
+     "bench": false,
+     "pts": 82.0
+    }
+   },
+   "total": 1056.0
+  },
+  "32": {
+   "day": 109.0,
+   "players": {
+    "Devin Booker": {
+     "bench": false,
+     "pts": 64.0
+    },
+    "Naz Reid": {
+     "bench": false,
+     "pts": 45.0
+    }
+   },
+   "total": 851.0
+  }
+ },
+ "version": 2,
+ "winner": null
+}
