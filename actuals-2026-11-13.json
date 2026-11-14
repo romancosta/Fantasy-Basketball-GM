@@ -1,0 +1,65 @@
+{
+ "date": "2026-11-13",
+ "final": false,
+ "period": 4,
+ "teams": {
+  "31": {
+   "day": 398.0,
+   "players": {
+    "Alperen Sengun": {
+     "bench": false,
+     "pts": 114.0
+    },
+    "Damian Lillard": {
+     "bench": false,
+     "pts": 54.0
+    },
+    "Domantas Sabonis": {
+     "bench": false,
+     "pts": 72.0
+    },
+    "Donovan Clingan": {
+     "bench": false,
+     "pts": 62.0
+    },
+    "Jabari Smith Jr.": {
+     "bench": false,
+     "pts": 18.0
+    },
+    "Shai Gilgeous-Alexander": {
+     "bench": false,
+     "pts": 78.0
+    }
+   },
+   "total": 1454.0
+  },
+  "32": {
+   "day": 258.0,
+   "players": {
+    "CJ McCollum": {
+     "bench": false,
+     "pts": 51.0
+    },
+    "Karl-Anthony Towns": {
+     "bench": false,
+     "pts": 85.0
+    },
+    "Mikal Bridges": {
+     "bench": false,
+     "pts": 37.0
+    },
+    "Nickeil Alexander-Walker": {
+     "bench": false,
+     "pts": 48.0
+    },
+    "Wendell Carter Jr.": {
+     "bench": false,
+     "pts": 37.0
+    }
+   },
+   "total": 1109.0
+  }
+ },
+ "version": 2,
+ "winner": null
+}

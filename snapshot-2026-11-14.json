@@ -1,0 +1,52 @@
+{
+ "date": "2026-11-14",
+ "me": 31,
+ "opp": 32,
+ "period": 4,
+ "teams": {
+  "31": {
+   "day": 151.5,
+   "players": {
+    "Ayo Dosunmu": {
+     "avail": 1.0,
+     "lineup": true,
+     "proj": 41.1,
+     "rest": 0.0
+    },
+    "Jamal Murray": {
+     "avail": 1.0,
+     "lineup": true,
+     "proj": 59.1,
+     "rest": 0.0
+    },
+    "Michael Porter Jr.": {
+     "avail": 1.0,
+     "lineup": true,
+     "proj": 51.3,
+     "rest": 0.0
+    }
+   },
+   "week": 1965.3
+  },
+  "32": {
+   "day": 69.0,
+   "players": {
+    "Aaron Gordon": {
+     "avail": 1.0,
+     "lineup": true,
+     "proj": 35.4,
+     "rest": 0.0
+    },
+    "DeMar DeRozan": {
+     "avail": 1.0,
+     "lineup": true,
+     "proj": 33.6,
+     "rest": 0.0
+    }
+   },
+   "week": 1503.0
+  }
+ },
+ "version": 2,
+ "win_prob": 1.0
+}
