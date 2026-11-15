@@ -1,0 +1,106 @@
+{
+ "date": "2026-11-15",
+ "me": 31,
+ "opp": 32,
+ "period": 4,
+ "teams": {
+  "31": {
+   "day": 378.0,
+   "players": {
+    "Alperen Sengun": {
+     "avail": 1.0,
+     "lineup": true,
+     "proj": 68.2,
+     "rest": 0.015
+    },
+    "Domantas Sabonis": {
+     "avail": 1.0,
+     "lineup": true,
+     "proj": 59.9,
+     "rest": 0.0
+    },
+    "Jabari Smith Jr.": {
+     "avail": 1.0,
+     "lineup": true,
+     "proj": 41.2,
+     "rest": 0.014
+    },
+    "Jaylen Brown": {
+     "avail": 1.0,
+     "lineup": true,
+     "proj": 45.0,
+     "rest": 0.191
+    },
+    "LeBron James": {
+     "avail": 1.0,
+     "lineup": true,
+     "proj": 45.5,
+     "rest": 0.141
+    },
+    "RJ Barrett": {
+     "avail": 1.0,
+     "lineup": true,
+     "proj": 50.9,
+     "rest": 0.0
+    },
+    "Shai Gilgeous-Alexander": {
+     "avail": 1.0,
+     "lineup": true,
+     "proj": 67.4,
+     "rest": 0.0
+    }
+   },
+   "week": 1946.0
+  },
+  "32": {
+   "day": 358.6,
+   "players": {
+    "CJ McCollum": {
+     "avail": 1.0,
+     "lineup": true,
+     "proj": 37.1,
+     "rest": 0.0
+    },
+    "Devin Booker": {
+     "avail": 1.0,
+     "lineup": true,
+     "proj": 54.4,
+     "rest": 0.013
+    },
+    "Karl-Anthony Towns": {
+     "avail": 1.0,
+     "lineup": true,
+     "proj": 66.8,
+     "rest": 0.0
+    },
+    "Luka Doncic": {
+     "avail": 1.0,
+     "lineup": true,
+     "proj": 84.1,
+     "rest": 0.0
+    },
+    "Mikal Bridges": {
+     "avail": 1.0,
+     "lineup": true,
+     "proj": 28.5,
+     "rest": 0.0
+    },
+    "Naz Reid": {
+     "avail": 1.0,
+     "lineup": true,
+     "proj": 43.4,
+     "rest": 0.0
+    },
+    "Nickeil Alexander-Walker": {
+     "avail": 1.0,
+     "lineup": true,
+     "proj": 44.3,
+     "rest": 0.0
+    }
+   },
+   "week": 1522.6
+  }
+ },
+ "version": 2,
+ "win_prob": 1.0
+}
