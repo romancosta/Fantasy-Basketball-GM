@@ -1,0 +1,77 @@
+{
+ "date": "2026-11-15",
+ "final": true,
+ "period": 4,
+ "teams": {
+  "31": {
+   "day": 371.0,
+   "players": {
+    "Alperen Sengun": {
+     "bench": false,
+     "pts": 67.0
+    },
+    "Domantas Sabonis": {
+     "bench": false,
+     "pts": 56.0
+    },
+    "Jabari Smith Jr.": {
+     "bench": false,
+     "pts": 36.0
+    },
+    "Jaylen Brown": {
+     "bench": false,
+     "pts": 47.0
+    },
+    "LeBron James": {
+     "bench": false,
+     "pts": 64.0
+    },
+    "RJ Barrett": {
+     "bench": false,
+     "pts": 35.0
+    },
+    "Shai Gilgeous-Alexander": {
+     "bench": false,
+     "pts": 66.0
+    }
+   },
+   "total": 1939.0
+  },
+  "32": {
+   "day": 313.0,
+   "players": {
+    "CJ McCollum": {
+     "bench": false,
+     "pts": 55.0
+    },
+    "Devin Booker": {
+     "bench": false,
+     "pts": 53.0
+    },
+    "Karl-Anthony Towns": {
+     "bench": false,
+     "pts": 87.0
+    },
+    "Luka Doncic": {
+     "bench": true,
+     "pts": 90.0
+    },
+    "Mikal Bridges": {
+     "bench": false,
+     "pts": 32.0
+    },
+    "Naz Reid": {
+     "bench": false,
+     "pts": 36.0
+    },
+    "Nickeil Alexander-Walker": {
+     "bench": false,
+     "pts": 50.0
+    }
+   },
+   "total": 1477.0
+  }
+ },
+ "version": 2,
+ "winner": 31
+}

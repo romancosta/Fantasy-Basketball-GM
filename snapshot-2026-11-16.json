@@ -1,0 +1,118 @@
+{
+ "date": "2026-11-16",
+ "me": 31,
+ "opp": 26,
+ "period": 5,
+ "teams": {
+  "26": {
+   "day": 398.9,
+   "players": {
+    "Anthony Davis": {
+     "avail": 1.0,
+     "lineup": true,
+     "proj": 65.0,
+     "rest": 0.025
+    },
+    "Cameron Boozer": {
+     "avail": 1.0,
+     "lineup": true,
+     "proj": 50.5,
+     "rest": 0.0
+    },
+    "Desmond Bane": {
+     "avail": 1.0,
+     "lineup": true,
+     "proj": 41.7,
+     "rest": 0.0
+    },
+    "James Harden": {
+     "avail": 1.0,
+     "lineup": true,
+     "proj": 49.1,
+     "rest": 0.0
+    },
+    "LaMelo Ball": {
+     "avail": 1.0,
+     "lineup": true,
+     "proj": 46.8,
+     "rest": 0.012
+    },
+    "Nikola Jokic": {
+     "avail": 1.0,
+     "lineup": true,
+     "proj": 86.5,
+     "rest": 0.0
+    },
+    "Tyrese Maxey": {
+     "avail": 1.0,
+     "lineup": true,
+     "proj": 59.3,
+     "rest": 0.013
+    }
+   },
+   "week": 1627.7
+  },
+  "31": {
+   "day": 435.2,
+   "players": {
+    "Alperen Sengun": {
+     "avail": 1.0,
+     "lineup": true,
+     "proj": 68.1,
+     "rest": 0.015
+    },
+    "Ayo Dosunmu": {
+     "avail": 1.0,
+     "lineup": true,
+     "proj": 40.9,
+     "rest": 0.013
+    },
+    "Damian Lillard": {
+     "avail": 1.0,
+     "lineup": true,
+     "proj": 44.2,
+     "rest": 0.036
+    },
+    "Donovan Clingan": {
+     "avail": 1.0,
+     "lineup": true,
+     "proj": 46.4,
+     "rest": 0.013
+    },
+    "Jabari Smith Jr.": {
+     "avail": 1.0,
+     "lineup": true,
+     "proj": 40.9,
+     "rest": 0.014
+    },
+    "Jamal Murray": {
+     "avail": 1.0,
+     "lineup": true,
+     "proj": 59.4,
+     "rest": 0.0
+    },
+    "Jaylen Brown": {
+     "avail": 1.0,
+     "lineup": true,
+     "proj": 44.7,
+     "rest": 0.191
+    },
+    "LeBron James": {
+     "avail": 1.0,
+     "lineup": true,
+     "proj": 39.3,
+     "rest": 0.266
+    },
+    "Michael Porter Jr.": {
+     "avail": 1.0,
+     "lineup": true,
+     "proj": 51.3,
+     "rest": 0.0
+    }
+   },
+   "week": 2055.9
+  }
+ },
+ "version": 2,
+ "win_prob": 0.921
+}
