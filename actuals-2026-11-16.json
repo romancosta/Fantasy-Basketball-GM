@@ -1,0 +1,81 @@
+{
+ "date": "2026-11-16",
+ "final": false,
+ "period": 5,
+ "teams": {
+  "26": {
+   "day": 377.0,
+   "players": {
+    "Anthony Davis": {
+     "bench": false,
+     "pts": 52.0
+    },
+    "Cameron Boozer": {
+     "bench": false,
+     "pts": 64.0
+    },
+    "Desmond Bane": {
+     "bench": false,
+     "pts": 65.0
+    },
+    "James Harden": {
+     "bench": false,
+     "pts": 39.0
+    },
+    "LaMelo Ball": {
+     "bench": false,
+     "pts": 20.0
+    },
+    "Nikola Jokic": {
+     "bench": false,
+     "pts": 84.0
+    },
+    "Tyrese Maxey": {
+     "bench": false,
+     "pts": 53.0
+    }
+   },
+   "total": 377.0
+  },
+  "31": {
+   "day": 420.0,
+   "players": {
+    "Alperen Sengun": {
+     "bench": false,
+     "pts": 54.0
+    },
+    "Ayo Dosunmu": {
+     "bench": false,
+     "pts": 24.0
+    },
+    "Damian Lillard": {
+     "bench": false,
+     "pts": 28.0
+    },
+    "Donovan Clingan": {
+     "bench": false,
+     "pts": 54.0
+    },
+    "Jabari Smith Jr.": {
+     "bench": false,
+     "pts": 47.0
+    },
+    "Jamal Murray": {
+     "bench": false,
+     "pts": 60.0
+    },
+    "Jaylen Brown": {
+     "bench": false,
+     "pts": 94.0
+    },
+    "Michael Porter Jr.": {
+     "bench": false,
+     "pts": 59.0
+    }
+   },
+   "total": 420.0
+  }
+ },
+ "version": 2,
+ "winner": null
+}

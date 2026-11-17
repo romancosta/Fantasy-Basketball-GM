@@ -1,0 +1,58 @@
+{
+ "date": "2026-11-17",
+ "me": 31,
+ "opp": 26,
+ "period": 5,
+ "teams": {
+  "26": {
+   "day": 86.8,
+   "players": {
+    "De'Aaron Fox": {
+     "avail": 1.0,
+     "lineup": true,
+     "proj": 43.4,
+     "rest": 0.0
+    },
+    "LaMelo Ball": {
+     "avail": 1.0,
+     "lineup": true,
+     "proj": 43.4,
+     "rest": 0.06
+    }
+   },
+   "week": 1733.5
+  },
+  "31": {
+   "day": 173.5,
+   "players": {
+    "Ayo Dosunmu": {
+     "avail": 1.0,
+     "lineup": true,
+     "proj": 34.0,
+     "rest": 0.163
+    },
+    "Damian Lillard": {
+     "avail": 1.0,
+     "lineup": true,
+     "proj": 43.4,
+     "rest": 0.036
+    },
+    "Donovan Clingan": {
+     "avail": 1.0,
+     "lineup": true,
+     "proj": 46.7,
+     "rest": 0.013
+    },
+    "RJ Barrett": {
+     "avail": 1.0,
+     "lineup": true,
+     "proj": 49.3,
+     "rest": 0.017
+    }
+   },
+   "week": 1952.0
+  }
+ },
+ "version": 2,
+ "win_prob": 0.807
+}
