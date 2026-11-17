@@ -3,6 +3,8 @@
 Notable changes to the nightly report and tooling. Newest first.
 
 ## Unreleased
+- Fix: playoff seeding ties follow the league's `playoffSeedingRule` from ESPN (now points scored; it was
+  hard-coded as fewer points against). The League footnote names the rule in use.
 - Streaming like The Godfather (from his transaction history and a 21-day simulation on our roster): core = the top 9 by rate,
   the other 3 active spots stream (was: adds from the last 7 days, max 2). Moves are judged on the next game day only, across
   week boundaries (was: rest of this matchup week, which made Sunday-night moves for Monday worth nothing). Today's moves
