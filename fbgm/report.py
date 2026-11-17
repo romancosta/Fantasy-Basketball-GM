@@ -408,9 +408,10 @@ def season_forecast(lg, p_me):
     current = {t: (sum(lg.points_so_far(t).values()), share) for t in ids}
     rival = next((t for t in ids if CONFIG["rival_name"].lower() in lg.team_names[t].lower()), None)
     unsure = POLICY["season_strength_sd_ratio"] * (k / (k + weeks_played)) ** 0.5
+    rule = ss.get("playoffSeedingRule") or season.DEFAULT_RULE
     sim = season.simulate(sched, lg.matchup_period, ids, strength, sd, current, me, p_me, n_playoff, rival,
                           sims=POLICY["season_sims"], seed=f"season-{lg.today}",
-                          strength_sd={t: unsure * strength[t] for t in ids})
+                          strength_sd={t: unsure * strength[t] for t in ids}, rule=rule)
     nxt = sorted((m["matchupPeriodId"], m["home"]["teamId"] if m["away"]["teamId"] == me else m["away"]["teamId"])
                  for m in sched if m["matchupPeriodId"] > lg.matchup_period and "away" in m
                  and me in (m["home"]["teamId"], m["away"]["teamId"]))[:3]
@@ -418,7 +419,8 @@ def season_forecast(lg, p_me):
     for wk, opp in nxt:
         spread = (sd[me] ** 2 + sd[opp] ** 2 + (unsure * strength[me]) ** 2 + (unsure * strength[opp]) ** 2) ** 0.5
         upcoming.append((opp, season.ND.cdf((strength[me] - strength[opp]) / spread)))
-    return {"sim": sim, "rec": season.standings(sched, lg.matchup_period, ids), "rival": rival, "next": upcoming}
+    return {"sim": sim, "rec": season.standings(sched, lg.matchup_period, ids), "rival": rival, "next": upcoming,
+            "tiebreak": season.tiebreak(rule)[2]}
 
 
 def league_rows(power, prev_order, rec, sim, names, me, rival, starts=None):
@@ -497,7 +499,7 @@ def league_section(lg, p_me):
         print("\n" + rl)
     print(f"\n_FP/week · Power = results + roster · Starts L7 = players who played in a starting slot, last "
           f"{len(starts) or 7} days (max {len(lg.slots) * (len(starts) or 7)}) · odds simulate the remaining weeks "
-          "(seeding: record, then fewer points against)._")
+          f"(seeding: record, then {f['tiebreak']})._")
 
 
 def lookahead_section(lg):

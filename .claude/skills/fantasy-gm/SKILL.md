@@ -154,8 +154,9 @@ Prints the finished report in markdown, including two overview sentences generat
   spread and an uncertainty about each team's true strength that both shrink as weeks are played. This week's win chance is
   pinned to the nightly's simulation. Shows the odds with a win vs a loss this week (🎯 Must-win when the gap is 15+ pts),
   the next three opponents, and the chance The Godfather finishes ahead of us. (ESPN's own simulation is no longer shown;
-  it differed a lot early on.) ASSUMED, not verified: seeding by overall record with ties broken by fewer points against (ESPN's rule is labelled
-  only "total points against"); divisions (East/West) are not modelled.
+  it differed a lot early on.) Seeding: overall record, ties broken by the league's
+  `playoffSeedingRule`, read each run (currently TOTAL_POINTS_SCORED: more points scored ranks higher; it was points against
+  until Nov 2026, modelled as fewer-ranks-higher, unverified). Divisions (East/West) are not modelled.
 - **Compact report**: the nightly is a quick read. One **Matchup** grid holds last night's projected → actual, today's projection, the
   week so far, the week projection with margin, and the change since yesterday's projection (split into last night's miss and the
   rest of the week); the win chance line also shows yesterday's figure. **News** shows only one-game rulings, rest talk in a

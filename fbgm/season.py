@@ -30,10 +30,24 @@ def standings(schedule, period, team_ids):
     return rec
 
 
-def order_key(r):
-    """Sort key, best first: wins (ties count half), then points against per the league's tiebreak setting.
-    ASSUMPTION: fewer points against ranks higher (ESPN labels the rule only 'total points against')."""
-    return (-(r["w"] + 0.5 * r["t"]), r["pa"])
+# ESPN's playoffSeedingRule -> (record field, sign: -1 = more ranks higher, label). Read from the league settings each run
+# (the league switched from points against to points scored in Nov 2026). ASSUMPTION for TOTAL_POINTS_AGAINST: fewer
+# points against ranks higher (ESPN labels it only "total points against"). Other rules fall back to points scored.
+TIEBREAKS = {
+    "TOTAL_POINTS_SCORED": ("pf", -1, "more points scored"),
+    "TOTAL_POINTS_AGAINST": ("pa", 1, "fewer points against"),
+}
+DEFAULT_RULE = "TOTAL_POINTS_SCORED"
+
+
+def tiebreak(rule):
+    return TIEBREAKS.get(rule, TIEBREAKS[DEFAULT_RULE])
+
+
+def order_key(r, rule=DEFAULT_RULE):
+    """Sort key, best first: wins (ties count half), then the league's seeding tiebreaker (see TIEBREAKS)."""
+    field, sign, _ = tiebreak(rule)
+    return (-(r["w"] + 0.5 * r["t"]), sign * r[field])
 
 
 def week_sds(strength, past, ratio):
@@ -54,12 +68,13 @@ def week_sds(strength, past, ratio):
 
 
 def simulate(schedule, period, team_ids, strength, sd, current, me, p_me, n_playoff, rival=None, sims=4000,
-             seed="season", strength_sd=None):
+             seed="season", strength_sd=None, rule=DEFAULT_RULE):
     """Playoff odds. current: {team: (points so far this week, share of the week still to play)}. Returns
     {'playoff': {team: share}, 'seed1': {...}, 'wins': {team: expected final wins}, 'rank': {team: [share by rank]},
      'me_if_win': share of sims making playoffs when we win this week, 'me_if_loss': same when we lose,
      'rival_ahead': share of sims where `rival` finishes above us}. strength_sd: {team: spread} - each simulated
-    season draws every team's true strength around the estimate, so early ratings aren't taken as gospel."""
+    season draws every team's true strength around the estimate, so early ratings aren't taken as gospel. rule: ESPN's
+    playoffSeedingRule, which breaks record ties."""
     strength_sd = strength_sd or {}
     rng = random.Random(seed)
     base = standings(schedule, period, team_ids)
@@ -100,7 +115,7 @@ def simulate(schedule, period, team_ids, strength, sd, current, me, p_me, n_play
                 r[t]["pf"] += mine
                 r[t]["pa"] += theirs
                 r[t]["w" if mine > theirs else "l"] += 1
-        order = sorted(team_ids, key=lambda t: order_key(r[t]))
+        order = sorted(team_ids, key=lambda t: order_key(r[t], rule))
         for i, t in enumerate(order):
             out["rank"][t][i] += 1
             out["wins"][t] += r[t]["w"] + 0.5 * r[t]["t"]

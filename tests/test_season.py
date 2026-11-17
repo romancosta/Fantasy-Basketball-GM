@@ -26,11 +26,25 @@ class Standings(unittest.TestCase):
         self.assertEqual((rec[2]["w"], rec[2]["l"]), (0, 1))
         self.assertEqual((rec[3]["t"], rec[4]["t"]), (1, 1))
 
-    def test_order_key_wins_then_fewer_points_against(self):
-        a = {"w": 3, "l": 1, "t": 0, "pf": 0, "pa": 5000}
-        b = {"w": 3, "l": 1, "t": 0, "pf": 0, "pa": 4900}
-        c = {"w": 4, "l": 0, "t": 0, "pf": 0, "pa": 9000}
-        self.assertEqual(sorted("abc", key=lambda k: season.order_key({"a": a, "b": b, "c": c}[k])), ["c", "b", "a"])
+    A = {"w": 3, "l": 1, "t": 0, "pf": 7000, "pa": 5000}
+    B = {"w": 3, "l": 1, "t": 0, "pf": 6800, "pa": 4900}
+    C = {"w": 4, "l": 0, "t": 0, "pf": 1000, "pa": 9000}
+
+    def order(self, rule=None):
+        recs = {"a": self.A, "b": self.B, "c": self.C}
+        key = (lambda k: season.order_key(recs[k])) if rule is None else (lambda k: season.order_key(recs[k], rule))
+        return sorted("abc", key=key)
+
+    def test_order_key_wins_then_more_points_scored_by_default(self):
+        self.assertEqual(self.order(), ["c", "a", "b"])
+        self.assertEqual(self.order("TOTAL_POINTS_SCORED"), ["c", "a", "b"])
+
+    def test_order_key_points_against_rule(self):
+        self.assertEqual(self.order("TOTAL_POINTS_AGAINST"), ["c", "b", "a"])
+
+    def test_unknown_rule_falls_back_to_points_scored(self):
+        self.assertEqual(self.order("HEAD_TO_HEAD"), ["c", "a", "b"])
+        self.assertEqual(season.tiebreak("HEAD_TO_HEAD")[2], "more points scored")
 
 
 class WeekSd(unittest.TestCase):
