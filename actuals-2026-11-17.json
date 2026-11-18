@@ -1,0 +1,45 @@
+{
+ "date": "2026-11-17",
+ "final": false,
+ "period": 5,
+ "teams": {
+  "26": {
+   "day": 54.0,
+   "players": {
+    "De'Aaron Fox": {
+     "bench": false,
+     "pts": 14.0
+    },
+    "LaMelo Ball": {
+     "bench": false,
+     "pts": 40.0
+    }
+   },
+   "total": 431.0
+  },
+  "31": {
+   "day": 212.0,
+   "players": {
+    "Ayo Dosunmu": {
+     "bench": false,
+     "pts": 54.0
+    },
+    "Damian Lillard": {
+     "bench": false,
+     "pts": 47.0
+    },
+    "Donovan Clingan": {
+     "bench": false,
+     "pts": 56.0
+    },
+    "RJ Barrett": {
+     "bench": false,
+     "pts": 55.0
+    }
+   },
+   "total": 632.0
+  }
+ },
+ "version": 2,
+ "winner": null
+}
