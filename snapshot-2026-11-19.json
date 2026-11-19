@@ -1,0 +1,58 @@
+{
+ "date": "2026-11-19",
+ "me": 31,
+ "opp": 26,
+ "period": 5,
+ "teams": {
+  "26": {
+   "day": 137.8,
+   "players": {
+    "Cameron Boozer": {
+     "avail": 1.0,
+     "lineup": true,
+     "proj": 49.9,
+     "rest": 0.036
+    },
+    "De'Aaron Fox": {
+     "avail": 1.0,
+     "lineup": true,
+     "proj": 42.0,
+     "rest": 0.0
+    },
+    "LaMelo Ball": {
+     "avail": 1.0,
+     "lineup": true,
+     "proj": 45.9,
+     "rest": 0.0
+    }
+   },
+   "week": 1584.9
+  },
+  "31": {
+   "day": 134.0,
+   "players": {
+    "Ayo Dosunmu": {
+     "avail": 1.0,
+     "lineup": true,
+     "proj": 41.2,
+     "rest": 0.0
+    },
+    "Damian Lillard": {
+     "avail": 1.0,
+     "lineup": true,
+     "proj": 45.1,
+     "rest": 0.0
+    },
+    "Donovan Clingan": {
+     "avail": 1.0,
+     "lineup": true,
+     "proj": 47.7,
+     "rest": 0.0
+    }
+   },
+   "week": 1750.4
+  }
+ },
+ "version": 2,
+ "win_prob": 0.844
+}

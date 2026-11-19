@@ -1,0 +1,73 @@
+{
+ "date": "2026-11-18",
+ "final": false,
+ "period": 5,
+ "teams": {
+  "26": {
+   "day": 346.0,
+   "players": {
+    "Anthony Davis": {
+     "bench": false,
+     "pts": 79.0
+    },
+    "Cameron Boozer": {
+     "bench": false,
+     "pts": 65.0
+    },
+    "Desmond Bane": {
+     "bench": false,
+     "pts": 30.0
+    },
+    "James Harden": {
+     "bench": false,
+     "pts": 48.0
+    },
+    "Nikola Jokic": {
+     "bench": false,
+     "pts": 68.0
+    },
+    "Onyeka Okongwu": {
+     "bench": false,
+     "pts": 56.0
+    }
+   },
+   "total": 777.0
+  },
+  "31": {
+   "day": 309.0,
+   "players": {
+    "Alperen Sengun": {
+     "bench": false,
+     "pts": 23.0
+    },
+    "Domantas Sabonis": {
+     "bench": false,
+     "pts": 54.0
+    },
+    "Jabari Smith Jr.": {
+     "bench": false,
+     "pts": 38.0
+    },
+    "Jamal Murray": {
+     "bench": false,
+     "pts": 57.0
+    },
+    "LeBron James": {
+     "bench": false,
+     "pts": 51.0
+    },
+    "Michael Porter Jr.": {
+     "bench": false,
+     "pts": 16.0
+    },
+    "Shai Gilgeous-Alexander": {
+     "bench": false,
+     "pts": 70.0
+    }
+   },
+   "total": 941.0
+  }
+ },
+ "version": 2,
+ "winner": null
+}
