@@ -1,0 +1,88 @@
+{
+ "date": "2026-11-20",
+ "me": 31,
+ "opp": 26,
+ "period": 5,
+ "teams": {
+  "26": {
+   "day": 289.6,
+   "players": {
+    "Anthony Davis": {
+     "avail": 1.0,
+     "lineup": true,
+     "proj": 66.6,
+     "rest": 0.0
+    },
+    "Desmond Bane": {
+     "avail": 1.0,
+     "lineup": true,
+     "proj": 42.3,
+     "rest": 0.0
+    },
+    "James Harden": {
+     "avail": 1.0,
+     "lineup": true,
+     "proj": 48.6,
+     "rest": 0.0
+    },
+    "Nikola Jokic": {
+     "avail": 1.0,
+     "lineup": true,
+     "proj": 85.5,
+     "rest": 0.0
+    },
+    "Onyeka Okongwu": {
+     "avail": 1.0,
+     "lineup": true,
+     "proj": 46.6,
+     "rest": 0.0
+    }
+   },
+   "week": 1605.3
+  },
+  "31": {
+   "day": 315.8,
+   "players": {
+    "Alperen Sengun": {
+     "avail": 0.6,
+     "lineup": true,
+     "proj": 39.8,
+     "rest": 0.0
+    },
+    "Domantas Sabonis": {
+     "avail": 1.0,
+     "lineup": true,
+     "proj": 57.6,
+     "rest": 0.031
+    },
+    "Jabari Smith Jr.": {
+     "avail": 1.0,
+     "lineup": true,
+     "proj": 41.6,
+     "rest": 0.0
+    },
+    "Jamal Murray": {
+     "avail": 1.0,
+     "lineup": true,
+     "proj": 59.3,
+     "rest": 0.0
+    },
+    "Michael Porter Jr.": {
+     "avail": 1.0,
+     "lineup": true,
+     "proj": 50.0,
+     "rest": 0.0
+    },
+    "Shai Gilgeous-Alexander": {
+     "avail": 1.0,
+     "lineup": true,
+     "proj": 67.5,
+     "rest": 0.0
+    }
+   },
+   "week": 1736.9
+  }
+ },
+ "version": 2,
+ "win_prob": 0.7965
+}
