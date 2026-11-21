@@ -1,0 +1,61 @@
+{
+ "date": "2026-11-20",
+ "final": false,
+ "period": 5,
+ "teams": {
+  "26": {
+   "day": 352.0,
+   "players": {
+    "Anthony Davis": {
+     "bench": false,
+     "pts": 88.0
+    },
+    "Desmond Bane": {
+     "bench": false,
+     "pts": 49.0
+    },
+    "James Harden": {
+     "bench": false,
+     "pts": 100.0
+    },
+    "Nikola Jokic": {
+     "bench": false,
+     "pts": 76.0
+    },
+    "Onyeka Okongwu": {
+     "bench": false,
+     "pts": 39.0
+    }
+   },
+   "total": 1252.0
+  },
+  "31": {
+   "day": 334.0,
+   "players": {
+    "Alperen Sengun": {
+     "bench": false,
+     "pts": 109.0
+    },
+    "Domantas Sabonis": {
+     "bench": false,
+     "pts": 69.0
+    },
+    "Jamal Murray": {
+     "bench": false,
+     "pts": 37.0
+    },
+    "Michael Porter Jr.": {
+     "bench": false,
+     "pts": 39.0
+    },
+    "Shai Gilgeous-Alexander": {
+     "bench": false,
+     "pts": 80.0
+    }
+   },
+   "total": 1396.0
+  }
+ },
+ "version": 2,
+ "winner": null
+}
