@@ -1,0 +1,57 @@
+{
+ "date": "2026-11-21",
+ "final": false,
+ "period": 5,
+ "teams": {
+  "26": {
+   "day": 113.0,
+   "players": {
+    "De'Aaron Fox": {
+     "bench": false,
+     "pts": 27.0
+    },
+    "LaMelo Ball": {
+     "bench": false,
+     "pts": 40.0
+    },
+    "Tyrese Maxey": {
+     "bench": false,
+     "pts": 46.0
+    }
+   },
+   "total": 1365.0
+  },
+  "31": {
+   "day": 317.0,
+   "players": {
+    "Ayo Dosunmu": {
+     "bench": false,
+     "pts": 32.0
+    },
+    "Brook Lopez": {
+     "bench": false,
+     "pts": 41.0
+    },
+    "Damian Lillard": {
+     "bench": false,
+     "pts": 37.0
+    },
+    "Domantas Sabonis": {
+     "bench": false,
+     "pts": 66.0
+    },
+    "Donovan Clingan": {
+     "bench": false,
+     "pts": 77.0
+    },
+    "LeBron James": {
+     "bench": false,
+     "pts": 64.0
+    }
+   },
+   "total": 1713.0
+  }
+ },
+ "version": 2,
+ "winner": null
+}
