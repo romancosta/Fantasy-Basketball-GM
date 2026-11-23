@@ -1,0 +1,124 @@
+{
+ "date": "2026-11-23",
+ "me": 31,
+ "opp": 24,
+ "period": 6,
+ "teams": {
+  "24": {
+   "day": 303.7,
+   "players": {
+    "Amen Thompson": {
+     "avail": 1.0,
+     "lineup": true,
+     "proj": 50.7,
+     "rest": 0.0
+    },
+    "Jaden McDaniels": {
+     "avail": 1.0,
+     "lineup": true,
+     "proj": 43.2,
+     "rest": 0.0
+    },
+    "Pascal Siakam": {
+     "avail": 1.0,
+     "lineup": true,
+     "proj": 39.4,
+     "rest": 0.283
+    },
+    "Reed Sheppard": {
+     "avail": 1.0,
+     "lineup": true,
+     "proj": 26.1,
+     "rest": 0.0
+    },
+    "VJ Edgecombe": {
+     "avail": 1.0,
+     "lineup": true,
+     "proj": 43.6,
+     "rest": 0.0
+    },
+    "Victor Wembanyama": {
+     "avail": 0.6,
+     "lineup": true,
+     "proj": 50.4,
+     "rest": 0.0
+    },
+    "Walker Kessler": {
+     "avail": 1.0,
+     "lineup": true,
+     "proj": 50.4,
+     "rest": 0.0
+    }
+   },
+   "week": 1510.4
+  },
+  "31": {
+   "day": 483.7,
+   "players": {
+    "Alperen Sengun": {
+     "avail": 1.0,
+     "lineup": true,
+     "proj": 68.2,
+     "rest": 0.0
+    },
+    "Ayo Dosunmu": {
+     "avail": 1.0,
+     "lineup": true,
+     "proj": 40.0,
+     "rest": 0.0
+    },
+    "Brandon Ingram": {
+     "avail": 1.0,
+     "lineup": true,
+     "proj": 49.2,
+     "rest": 0.0
+    },
+    "Brook Lopez": {
+     "avail": 1.0,
+     "lineup": true,
+     "proj": 34.6,
+     "rest": 0.0
+    },
+    "Damian Lillard": {
+     "avail": 1.0,
+     "lineup": true,
+     "proj": 45.2,
+     "rest": 0.0
+    },
+    "Domantas Sabonis": {
+     "avail": 1.0,
+     "lineup": true,
+     "proj": 60.1,
+     "rest": 0.0
+    },
+    "Donovan Clingan": {
+     "avail": 1.0,
+     "lineup": true,
+     "proj": 48.8,
+     "rest": 0.0
+    },
+    "Jaylen Brown": {
+     "avail": 0.6,
+     "lineup": true,
+     "proj": 34.2,
+     "rest": 0.0
+    },
+    "LeBron James": {
+     "avail": 1.0,
+     "lineup": true,
+     "proj": 53.9,
+     "rest": 0.0
+    },
+    "Michael Porter Jr.": {
+     "avail": 1.0,
+     "lineup": true,
+     "proj": 49.5,
+     "rest": 0.0
+    }
+   },
+   "week": 1933.7
+  }
+ },
+ "version": 2,
+ "win_prob": 0.92575
+}

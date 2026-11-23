@@ -1,0 +1,41 @@
+{
+ "date": "2026-11-22",
+ "final": true,
+ "period": 5,
+ "teams": {
+  "26": {
+   "day": 257.0,
+   "players": {
+    "Anthony Davis": {
+     "bench": false,
+     "pts": 53.0
+    },
+    "Desmond Bane": {
+     "bench": false,
+     "pts": 35.0
+    },
+    "Nikola Jokic": {
+     "bench": false,
+     "pts": 135.0
+    },
+    "Onyeka Okongwu": {
+     "bench": false,
+     "pts": 34.0
+    }
+   },
+   "total": 1622.0
+  },
+  "31": {
+   "day": 102.0,
+   "players": {
+    "Jamal Murray": {
+     "bench": false,
+     "pts": 102.0
+    }
+   },
+   "total": 1815.0
+  }
+ },
+ "version": 2,
+ "winner": 31
+}
