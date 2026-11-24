@@ -1,0 +1,52 @@
+{
+ "date": "2026-11-24",
+ "me": 31,
+ "opp": 24,
+ "period": 6,
+ "teams": {
+  "24": {
+   "day": 190.8,
+   "players": {
+    "AJ Dybantsa": {
+     "avail": 1.0,
+     "lineup": true,
+     "proj": 45.0,
+     "rest": 0.0
+    },
+    "Ausar Thompson": {
+     "avail": 1.0,
+     "lineup": true,
+     "proj": 44.6,
+     "rest": 0.0
+    },
+    "Cooper Flagg": {
+     "avail": 1.0,
+     "lineup": true,
+     "proj": 62.7,
+     "rest": 0.0
+    },
+    "Derrick White": {
+     "avail": 1.0,
+     "lineup": true,
+     "proj": 38.6,
+     "rest": 0.0
+    }
+   },
+   "week": 1536.9
+  },
+  "31": {
+   "day": 60.2,
+   "players": {
+    "Jamal Murray": {
+     "avail": 1.0,
+     "lineup": true,
+     "proj": 60.2,
+     "rest": 0.0
+    }
+   },
+   "week": 2141.1
+  }
+ },
+ "version": 2,
+ "win_prob": 0.99075
+}

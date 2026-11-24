@@ -1,0 +1,89 @@
+{
+ "date": "2026-11-23",
+ "final": false,
+ "period": 6,
+ "teams": {
+  "24": {
+   "day": 323.0,
+   "players": {
+    "Amen Thompson": {
+     "bench": false,
+     "pts": 52.0
+    },
+    "Jaden McDaniels": {
+     "bench": false,
+     "pts": 93.0
+    },
+    "Pascal Siakam": {
+     "bench": false,
+     "pts": 55.0
+    },
+    "Reed Sheppard": {
+     "bench": false,
+     "pts": 23.0
+    },
+    "VJ Edgecombe": {
+     "bench": false,
+     "pts": 45.0
+    },
+    "Walker Kessler": {
+     "bench": false,
+     "pts": 55.0
+    }
+   },
+   "total": 323.0
+  },
+  "31": {
+   "day": 530.0,
+   "players": {
+    "Alperen Sengun": {
+     "bench": false,
+     "pts": 58.0
+    },
+    "Ayo Dosunmu": {
+     "bench": false,
+     "pts": 46.0
+    },
+    "Brandon Ingram": {
+     "bench": true,
+     "pts": 47.0
+    },
+    "Brook Lopez": {
+     "bench": false,
+     "pts": 12.0
+    },
+    "Damian Lillard": {
+     "bench": false,
+     "pts": 51.0
+    },
+    "Domantas Sabonis": {
+     "bench": false,
+     "pts": 75.0
+    },
+    "Donovan Clingan": {
+     "bench": false,
+     "pts": 80.0
+    },
+    "Jaylen Brown": {
+     "bench": false,
+     "pts": 47.0
+    },
+    "LeBron James": {
+     "bench": false,
+     "pts": 50.0
+    },
+    "Michael Porter Jr.": {
+     "bench": false,
+     "pts": 29.0
+    },
+    "Shai Gilgeous-Alexander": {
+     "bench": false,
+     "pts": 82.0
+    }
+   },
+   "total": 530.0
+  }
+ },
+ "version": 2,
+ "winner": null
+}
