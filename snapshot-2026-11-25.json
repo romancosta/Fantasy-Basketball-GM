@@ -1,0 +1,118 @@
+{
+ "date": "2026-11-25",
+ "me": 31,
+ "opp": 24,
+ "period": 6,
+ "teams": {
+  "24": {
+   "day": 215.8,
+   "players": {
+    "Amen Thompson": {
+     "avail": 1.0,
+     "lineup": true,
+     "proj": 50.7,
+     "rest": 0.0
+    },
+    "Jaden McDaniels": {
+     "avail": 1.0,
+     "lineup": true,
+     "proj": 45.1,
+     "rest": 0.0
+    },
+    "Reed Sheppard": {
+     "avail": 1.0,
+     "lineup": true,
+     "proj": 26.0,
+     "rest": 0.0
+    },
+    "VJ Edgecombe": {
+     "avail": 1.0,
+     "lineup": true,
+     "proj": 43.6,
+     "rest": 0.0
+    },
+    "Victor Wembanyama": {
+     "avail": 0.6,
+     "lineup": true,
+     "proj": 50.4,
+     "rest": 0.0
+    }
+   },
+   "week": 1578.7
+  },
+  "31": {
+   "day": 540.6,
+   "players": {
+    "Alperen Sengun": {
+     "avail": 1.0,
+     "lineup": true,
+     "proj": 67.8,
+     "rest": 0.0
+    },
+    "Ayo Dosunmu": {
+     "avail": 1.0,
+     "lineup": true,
+     "proj": 40.2,
+     "rest": 0.0
+    },
+    "Brandon Ingram": {
+     "avail": 1.0,
+     "lineup": true,
+     "proj": 49.0,
+     "rest": 0.0
+    },
+    "Brook Lopez": {
+     "avail": 1.0,
+     "lineup": false,
+     "proj": 33.6,
+     "rest": 0.0
+    },
+    "Damian Lillard": {
+     "avail": 1.0,
+     "lineup": true,
+     "proj": 45.4,
+     "rest": 0.0
+    },
+    "Domantas Sabonis": {
+     "avail": 1.0,
+     "lineup": true,
+     "proj": 60.8,
+     "rest": 0.0
+    },
+    "Donovan Clingan": {
+     "avail": 1.0,
+     "lineup": true,
+     "proj": 50.1,
+     "rest": 0.0
+    },
+    "Jaylen Brown": {
+     "avail": 1.0,
+     "lineup": true,
+     "proj": 56.5,
+     "rest": 0.0
+    },
+    "LeBron James": {
+     "avail": 1.0,
+     "lineup": true,
+     "proj": 53.7,
+     "rest": 0.0
+    },
+    "Michael Porter Jr.": {
+     "avail": 1.0,
+     "lineup": true,
+     "proj": 48.6,
+     "rest": 0.0
+    },
+    "Shai Gilgeous-Alexander": {
+     "avail": 1.0,
+     "lineup": true,
+     "proj": 68.6,
+     "rest": 0.0
+    }
+   },
+   "week": 2121.4
+  }
+ },
+ "version": 2,
+ "win_prob": 0.9845
+}

@@ -1,0 +1,41 @@
+{
+ "date": "2026-11-24",
+ "final": false,
+ "period": 6,
+ "teams": {
+  "24": {
+   "day": 231.0,
+   "players": {
+    "AJ Dybantsa": {
+     "bench": false,
+     "pts": 69.0
+    },
+    "Ausar Thompson": {
+     "bench": false,
+     "pts": 50.0
+    },
+    "Cooper Flagg": {
+     "bench": false,
+     "pts": 78.0
+    },
+    "Derrick White": {
+     "bench": false,
+     "pts": 34.0
+    }
+   },
+   "total": 554.0
+  },
+  "31": {
+   "day": 42.0,
+   "players": {
+    "Jamal Murray": {
+     "bench": false,
+     "pts": 42.0
+    }
+   },
+   "total": 572.0
+  }
+ },
+ "version": 2,
+ "winner": null
+}
