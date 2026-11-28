@@ -1,0 +1,85 @@
+{
+ "date": "2026-11-27",
+ "final": false,
+ "period": 6,
+ "teams": {
+  "24": {
+   "day": 429.0,
+   "players": {
+    "Ausar Thompson": {
+     "bench": false,
+     "pts": 40.0
+    },
+    "Cooper Flagg": {
+     "bench": false,
+     "pts": 101.0
+    },
+    "Derrick White": {
+     "bench": false,
+     "pts": 28.0
+    },
+    "Jaden McDaniels": {
+     "bench": false,
+     "pts": 38.0
+    },
+    "Pascal Siakam": {
+     "bench": false,
+     "pts": 27.0
+    },
+    "VJ Edgecombe": {
+     "bench": false,
+     "pts": 37.0
+    },
+    "Victor Wembanyama": {
+     "bench": false,
+     "pts": 94.0
+    },
+    "Walker Kessler": {
+     "bench": false,
+     "pts": 64.0
+    }
+   },
+   "total": 1319.0
+  },
+  "31": {
+   "day": 356.0,
+   "players": {
+    "Ayo Dosunmu": {
+     "bench": false,
+     "pts": 67.0
+    },
+    "Brandon Ingram": {
+     "bench": false,
+     "pts": 40.0
+    },
+    "Brook Lopez": {
+     "bench": false,
+     "pts": 43.0
+    },
+    "Donovan Clingan": {
+     "bench": false,
+     "pts": 54.0
+    },
+    "Jamal Murray": {
+     "bench": false,
+     "pts": 71.0
+    },
+    "Jusuf Nurkic": {
+     "bench": false,
+     "pts": 41.0
+    },
+    "LeBron James": {
+     "bench": false,
+     "pts": 56.0
+    },
+    "Michael Porter Jr.": {
+     "bench": false,
+     "pts": 25.0
+    }
+   },
+   "total": 1491.0
+  }
+ },
+ "version": 2,
+ "winner": null
+}
